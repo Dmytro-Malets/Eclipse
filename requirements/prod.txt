@@ -1,0 +1,4 @@
+-r base.txt
+
+asyncpg==0.30.0
+psycopg2-binary==2.9.10
