@@ -1,0 +1,13 @@
+.env
+# SQLite database
+bot.db
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+# Virtualenvs
+venv/
+# Git
+.git
+.gitignore
+.idea/

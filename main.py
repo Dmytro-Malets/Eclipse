@@ -1,8 +1,9 @@
-import asyncio, sys, logging
+import asyncio, logging, os
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from config.settings import BOT_TOKEN
+from config.logging_config import configure_logging
 from database.database import check_connection
 from handlers import register_all_handlers
 from middlewares.user_middleware import setup_middlewares
@@ -10,11 +11,10 @@ from middlewares.user_middleware import setup_middlewares
 
 async def main():
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        stream=sys.stdout
-    )
+    prod = os.environ.get("MODE", 'dev').lower() == 'prod'
+    configure_logging(prod)
+
+    logger = logging.getLogger(__name__)
 
     if not await check_connection(): return
 
@@ -26,10 +26,10 @@ async def main():
 
     # Start polling
     try:
-        logging.info("🚀 Bot is starting...")
+        logger.info("🚀 Bot is starting...")
         await dp.start_polling(bot)
     except Exception as e:
-        logging.error(f"Error: {e}")
+        logger.error(f"Error: {e}")
     finally:
         await bot.session.close()
 
