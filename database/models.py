@@ -38,3 +38,21 @@ class User(Base):
         if self.username:
             return f"@{self.username}"
         return self.full_name
+
+    @property
+    def has_location(self) -> bool:
+        return all([self.city, self.latitude, self.longitude, self.timezone])
+
+    @property
+    def location_summary(self) -> str:
+        if not self.has_location:
+            return "No location set"
+
+        return f"{self.city} ({self.latitude:.2f}, {self.longitude:.2f}) - {self.timezone}"
+
+    @property
+    def coordinates(self) -> tuple:
+        if not self.has_location:
+            return (None, None)
+
+        return (self.latitude, self.longitude)

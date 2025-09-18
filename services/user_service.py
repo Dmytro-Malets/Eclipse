@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from sqlalchemy import select, update
 from aiogram.types import User as TelegramUser
 import logging
@@ -59,3 +59,25 @@ async def update_user_info(user: User, telegram_user: TelegramUser) -> User:
             logger.info(f"📝 User data updated {user.user_id}")
 
     return user
+
+async def update_user_location(user: User, location_data: Dict[str, Any]) -> User:
+    async with get_db() as session:
+        await session.execute(
+            update(User)
+            .where(User.user_id == user.user_id)
+            .values(
+                city=location_data['name'],
+                latitude=location_data['latitude'],
+                longitude=location_data['longitude'],
+                timezone=location_data['timezone']
+            )
+        )
+
+        logger.info(f"📍 Location updated for user {user.user_id}: {location_data['name']}")
+
+        user.city = location_data['name']
+        user.latitude = location_data['latitude']
+        user.longitude = location_data['longitude']
+        user.timezone = location_data['timezone']
+
+        return user

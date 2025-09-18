@@ -1,9 +1,10 @@
 from logging.config import fileConfig
-import asyncio, os
+import asyncio
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy import pool
 from alembic import context
 from database.models import Base
+from config.settings import DATABASE_URL
 
 # this is the Alembic Config object
 config = context.config
@@ -17,7 +18,7 @@ target_metadata = Base.metadata
 
 def get_url():
     """Get the database URL from environment variables or alembic.ini"""
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = DATABASE_URL
     if database_url:
         return database_url
 
