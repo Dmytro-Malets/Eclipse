@@ -83,7 +83,7 @@ async def process_location_registration(message: Message, user: User, location_n
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(text="✅ Confirm", callback_data=callback_data),
-                InlineKeyboardButton(text="❌ Enter Different Location", callback_data="loc_different")
+                InlineKeyboardButton(text="❌ Change Location", callback_data="loc_different")
             ]
         ])
 
