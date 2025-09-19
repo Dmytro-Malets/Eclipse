@@ -118,7 +118,7 @@ def format_location_confirmation(location_data: Dict[str, Any]) -> str:
 {lat_dms}, {lng_dms}
 ({location_data['latitude']:.4f}, {location_data['longitude']:.4f})
 
-🌐 <b>Current Time:</b> {time_info['time']} on {time_info['date']} ({gmt_offset})
+🌐 <b>Current Time:</b> {time_info['time']} on {time_info['date']} ({time_info['timezone_abbr']}, {gmt_offset})
 
 <i>Please confirm if this is your correct location:</i>""".strip()
 

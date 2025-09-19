@@ -13,7 +13,7 @@ async def cmd_sun(message: Message, user: User):
         await message.answer(
             "❌ <b>Location not registered!</b>\n\n"
             "To view sun information, please register your location first.\n\n"
-            "Use <code>/location</code> command or press the 📍Location button"
+            "Use /location command or press the 📍Location button"
         )
         return
 
@@ -25,7 +25,7 @@ async def sun_button_handler(message: Message, user: User):
         await message.answer(
             "❌ <b>Location not registered!</b>\n\n"
             "To view sun information, please register your location first.\n\n"
-            "Use <code>/location</code> command or press the 📍Location button"
+            "Use /location command or press the 📍Location button"
         )
         return
 
