@@ -2,7 +2,7 @@ from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from typing import Dict, Any
-import logging, random
+import logging, random, re
 from database.models import User
 from services.location_service import location_service, decimal_to_dms, format_utc_offset
 from services.user_service import update_user_location
@@ -111,14 +111,23 @@ def format_location_confirmation(location_data: Dict[str, Any]) -> str:
     # Format GMT offset
     gmt_offset = format_utc_offset(time_info['utc_offset'])
 
+    # Check if timezone_abbr is just a numeric offset (like +03, -05)
+    timezone_abbr = time_info['timezone_abbr']
+    is_numeric_timezone = bool(re.match(r'^[+-]\d{2,3}$', timezone_abbr))
+
+    if is_numeric_timezone:
+        timezone_display = f"({gmt_offset})"
+    else:
+        timezone_display = f"({timezone_abbr}, {gmt_offset})"
+
     return f"""📍 <b>{location_data['name']}</b>
 🌍 {location_data['full_name']}
 
 <b>Coordinates:</b>
-{lat_dms}, {lng_dms}
-({location_data['latitude']:.4f}, {location_data['longitude']:.4f})
+<b>DMS:</b> {lat_dms}, {lng_dms}
+<b>Decimal:</b> {location_data['latitude']:.4f} (lat), {location_data['longitude']:.4f} (lon)
 
-🌐 <b>Current Time:</b> {time_info['time']} on {time_info['date']} ({time_info['timezone_abbr']}, {gmt_offset})
+🌐 <b>Current Time:</b> {time_info['time']} on {time_info['date']} {timezone_display}
 
 <i>Please confirm if this is your correct location:</i>""".strip()
 
