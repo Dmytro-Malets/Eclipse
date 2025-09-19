@@ -51,8 +51,7 @@ async def update_user_info(user: User, telegram_user: TelegramUser) -> User:
                 .values(
                     username=telegram_user.username,
                     first_name=telegram_user.first_name,
-                    last_name=telegram_user.last_name,
-                    language_code=telegram_user.language_code or "uk"
+                    last_name=telegram_user.last_name
                 )
             )
 
