@@ -2,7 +2,7 @@ import aiohttp, logging
 from typing import Optional, Dict, Any
 from database.models import User
 from config.settings import OPENWEATHER_API_KEY
-from services.customerror import NoAPIError
+from .customerror import NoAPIError
 
 logger = logging.getLogger(__name__)
 

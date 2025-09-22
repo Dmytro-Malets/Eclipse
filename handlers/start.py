@@ -32,7 +32,6 @@ async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Start the bot"),
         BotCommand(command="help", description="Show help"),
-        BotCommand(command="location", description="Register location"),
     ]
     await bot.set_my_commands(commands)
 
