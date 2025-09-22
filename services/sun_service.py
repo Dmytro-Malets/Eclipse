@@ -4,12 +4,15 @@ from typing import Dict, Any, Optional
 from astral import LocationInfo
 from astral.sun import sun, azimuth, elevation
 from database.models import User
+from .uv_service import UVService
+from config.settings import OPENWEATHER_API_KEY
 
 logger = logging.getLogger(__name__)
 
+
 class SunService:
     def __init__(self):
-        pass
+        self.uv_service = UVService(OPENWEATHER_API_KEY) if OPENWEATHER_API_KEY else None
 
     @staticmethod
     def create_location_info(user: User) -> Optional[LocationInfo]:
@@ -29,7 +32,7 @@ class SunService:
             logger.error(f"Error creating LocationInfo for user {user.user_id}: {e}")
             return None
 
-    def get_sun_times(self, user: User, target_date: date = None) -> Optional[Dict[str, Any]]:
+    async def get_sun_times(self, user: User, target_date: date = None) -> Optional[Dict[str, Any]]:
         location = self.create_location_info(user)
         if not location:
             return None
@@ -54,6 +57,11 @@ class SunService:
                     'elevation': round(sun_elevation, 1),
                     'is_up': sun_elevation > 0
                 }
+
+            # Get UV index
+            uv_data = None
+            if target_date == user_today and self.uv_service:
+                uv_data = await self.uv_service.get_uv_index(user)
 
             # Calculate day length
             day_length = sun_times['sunset'] - sun_times['sunrise']
@@ -83,6 +91,10 @@ class SunService:
             # Add current position if available
             if sun_position:
                 result['current_position'] = sun_position # noqa
+
+            # Add UV index if available
+            if uv_data is not None:
+                result['uv_data'] = uv_data # noqa
 
             return result
 
@@ -145,6 +157,10 @@ class SunService:
 
         if sun_data['current_time']:
             message += f"<b>{sun_data['sun_status']}</b>\n\n"
+
+            if 'uv_data' in sun_data and sun_data['uv_data'] is not None:
+                uv = sun_data['uv_data']
+                message += f"<b>UV Index:</b> {uv['uv_index']} {uv['color']}\n\n"
 
             if 'current_position' in sun_data:
                 pos = sun_data['current_position']

@@ -36,7 +36,7 @@ async def show_sun_info(message: Message, user: User, target_date: date):
     processing_msg = await message.answer("Calculating sun information...")
 
     try:
-        sun_data = sun_service.get_sun_times(user, target_date)
+        sun_data = await sun_service.get_sun_times(user, target_date)
 
         if not sun_data:
             await processing_msg.edit_text(
@@ -122,7 +122,7 @@ async def sun_date_callback(callback: CallbackQuery, user: User):
             await callback.answer("❌ Invalid date format", show_alert=True)
             return
 
-        sun_data = sun_service.get_sun_times(user, target_date)
+        sun_data = await sun_service.get_sun_times(user, target_date)
 
         if not sun_data:
             await callback.answer("❌ Error calculating sun information", show_alert=True)
