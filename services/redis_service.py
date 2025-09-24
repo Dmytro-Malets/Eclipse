@@ -58,5 +58,36 @@ class RedisService:
         except Exception as e:
             logger.error(f"❌ Error deleting temp location: {e}")
 
+    async def set_moon_photo_message(self, user_id: int, chat_id: int, photo_message_id: int, text_message_id: int, expire_seconds: int = 3600):
+        try:
+            key = f"moon_messages:{user_id}:{chat_id}"
+            value = json.dumps({
+                "photo_message_id": photo_message_id,
+                "text_message_id": text_message_id
+            })
+            await self.redis.setex(key, expire_seconds, value)
+            logger.info(f"📦 Stored moon messages for user {user_id} in chat {chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Error storing moon messages: {e}")
+
+    async def get_moon_photo_message(self, user_id: int, chat_id: int) -> Optional[Dict[str, int]]:
+        try:
+            key = f"moon_messages:{user_id}:{chat_id}"
+            value = await self.redis.get(key)
+            if value:
+                return json.loads(value)
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error getting moon messages: {e}")
+            return None
+
+    async def delete_moon_photo_message(self, user_id: int, chat_id: int):
+        try:
+            key = f"moon_messages:{user_id}:{chat_id}"
+            await self.redis.delete(key)
+            logger.info(f"🗑️ Deleted moon messages for user {user_id} in chat {chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Error deleting moon messages: {e}")
+
 
 redis_service = RedisService()
