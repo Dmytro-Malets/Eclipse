@@ -133,13 +133,13 @@ class SunService:
         if now < sun_times['sunrise']:
             time_to_sunrise = sun_times['sunrise'] - now
             formatted_time = SunService._format_time_until(time_to_sunrise)
-            return f"Sun rises in {formatted_time}"
+            return f"<b>Sun rises in:<b> {formatted_time}"
         elif now < sun_times['sunset']:
             time_to_sunset = sun_times['sunset'] - now
             formatted_time = SunService._format_time_until(time_to_sunset)
-            return f"Sun sets in {formatted_time}"
+            return f"<b>Sun sets in:<b> {formatted_time}"
         else:
-            return "Sun has set"
+            return "<b>Sun has set</b>"
 
     @staticmethod
     def format_sun_info_message(sun_data: Dict[str, Any]) -> str:
@@ -156,7 +156,7 @@ class SunService:
         message += f"⏱ <b>Day Length:</b> {sun_data['day_length']}\n\n"
 
         if sun_data['current_time']:
-            message += f"<b>{sun_data['sun_status']}</b>\n\n"
+            message += f"{sun_data['sun_status']}\n\n"
 
             if 'uv_data' in sun_data and sun_data['uv_data'] is not None:
                 uv = sun_data['uv_data']
@@ -167,7 +167,7 @@ class SunService:
                 status_icon = "☀️" if pos['is_up'] else "🌙"
                 message += f"<b>Current Sun Position: {status_icon}</b>\n"
                 message += f"• <b>Azimuth:</b> {pos['azimuth']}°\n"
-                message += f"• <b>Elevation:</b> {pos['elevation']}°\n"
+                message += f"• <b>Altitude:</b> {pos['elevation']}°\n"
                 message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}\n"
 
         return message

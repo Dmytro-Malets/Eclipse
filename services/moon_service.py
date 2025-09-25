@@ -381,7 +381,7 @@ class MoonService:
         if moon_data['current_position']:
             pos = moon_data['current_position']
             status_icon = "🌙" if pos['is_up'] else "🌑"
-            message += f"<b>Moon Position: {status_icon}</b>\n"
+            message += f"<b>Current Moon Position: {status_icon}</b>\n"
             message += f"• <b>Azimuth:</b> {pos['azimuth']}°\n"
             message += f"• <b>Altitude:</b> {pos['altitude']}°\n"
             message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}\n"
