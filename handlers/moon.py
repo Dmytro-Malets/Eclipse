@@ -1,6 +1,4 @@
-import logging, re
-from datetime import datetime
-from typing import Optional
+import logging
 from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, BufferedInputFile, \
@@ -75,7 +73,6 @@ async def show_moon_info(message: Message, user: User, target_date: date):
                 # Continue with text message even if image fails
 
         keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user)
-
         formatted_message = moon_service.format_moon_info_message(moon_data)
 
         text_message = await message.answer(formatted_message, reply_markup=keyboard)
@@ -139,7 +136,7 @@ def create_moon_navigation_keyboard(user_id: int, current_date: date, user: User
 
     return keyboard
 
-async def moon_date_callback(callback: CallbackQuery, user: User):
+async def moon_navigation_callback(callback: CallbackQuery, user: User):
     try:
         # Parse callback data: moon_date:user_id:date
         parts = callback.data.split(':')
@@ -160,49 +157,18 @@ async def moon_date_callback(callback: CallbackQuery, user: User):
             await callback.answer("❌ Invalid date format", show_alert=True)
             return
 
-        current_date = _extract_current_date_from_message(callback.message.text)
+        await _update_moon_info(callback, user, target_date)
 
-        # If trying to navigate to the same date, treat as refresh
-        if current_date and current_date == target_date:
-            await _update_moon_info(callback, user, target_date, update_photo=False)
-            await callback.answer("Already showing this date")
+        if "refresh" in callback.data:
+            await callback.answer("🔄 Data refreshed")
         else:
-            await _update_moon_info(callback, user, target_date, update_photo=True)
             await callback.answer()
 
     except Exception as e:
-        logger.error(f"Error in moon date callback: {e}")
+        logger.error(f"Error in moon navigation callback: {e}")
         await callback.answer("❌ Error occurred", show_alert=True)
 
-async def moon_refresh_callback(callback: CallbackQuery, user: User):
-    try:
-        # Parse callback data: moon_refresh:user_id:date
-        parts = callback.data.split(':')
-        if len(parts) != 3:
-            await callback.answer("❌ Invalid callback data", show_alert=True)
-            return
-
-        callback_user_id = int(parts[1])
-        target_date_str = parts[2]
-
-        if callback_user_id != user.user_id:
-            await callback.answer("❌ This button is not for you!", show_alert=True)
-            return
-
-        try:
-            target_date = date.fromisoformat(target_date_str)
-        except ValueError:
-            await callback.answer("❌ Invalid date format", show_alert=True)
-            return
-
-        await _update_moon_info(callback, user, target_date, update_photo=False)
-        await callback.answer("🔄 Data refreshed")
-
-    except Exception as e:
-        logger.error(f"Error in moon refresh callback: {e}")
-        await callback.answer("❌ Error occurred", show_alert=True)
-
-async def _update_moon_info(callback: CallbackQuery, user: User, target_date: date, update_photo: bool = True):
+async def _update_moon_info(callback: CallbackQuery, user: User, target_date: date):
     try:
         moon_data = await moon_service.get_moon_data(user, target_date)
 
@@ -210,116 +176,49 @@ async def _update_moon_info(callback: CallbackQuery, user: User, target_date: da
             await callback.answer("❌ Error calculating moon information", show_alert=True)
             return
 
-        # Update photo if requested and if we have stored message IDs
-        if update_photo:
-            moon_image = moon_data.get('moon_image')
-            if moon_image:
-                try:
-                    # Get stored message IDs
-                    stored_messages = await redis_service.get_moon_photo_message(user.user_id, callback.message.chat.id)
+        moon_image = moon_data.get('moon_image')
+        stored_messages = await redis_service.get_moon_photo_message(user.user_id, callback.message.chat.id)
 
-                    if stored_messages:
-                        photo = BufferedInputFile(
-                            moon_image.getvalue(),
-                            filename=f"moon_phase_{target_date.isoformat()}.png"
-                        )
+        if stored_messages and moon_image:
+            try:
+                photo = BufferedInputFile(
+                    moon_image.getvalue(),
+                    filename=f"moon_phase_{target_date.isoformat()}.png"
+                )
+                phase_info = moon_data['moon_phase']
+                caption = f"<b>{phase_info['phase_name']}</b>"
 
-                        phase_info = moon_data['moon_phase']
-                        caption = f"<b>{phase_info['phase_name']}</b>"
+                await callback.bot.edit_message_media(
+                    chat_id=callback.message.chat.id,
+                    message_id=stored_messages['photo_message_id'],
+                    media=InputMediaPhoto(media=photo, caption=caption)
+                )
+            except Exception as e:
+                if "message is not modified" not in str(e).lower():
+                    logger.error(f"Could not update moon image: {e}")
+            finally:
+                if moon_image:
+                    moon_image.close()
+        else:
+            logger.warning(f"Skipping photo update for user {user.user_id}: message IDs or image missing.")
 
-                        # Try to edit existing photo
-                        await callback.bot.edit_message_media(
-                            chat_id=callback.message.chat.id,
-                            message_id=stored_messages['photo_message_id'],
-                            media=InputMediaPhoto(media=photo, caption=caption)
-                        )
-
-                        moon_image.close()
-
-                except Exception as e:
-                    logger.error(f"Error updating moon image: {e}")
-
-                    # If it's "message is not modified" error, don't send new photo
-                    if "message is not modified" in str(e).lower():
-                        logger.info("Photo is identical, skipping update")
-                        if moon_image:
-                            moon_image.close()
-                    else:
-                        # If editing fails for other reasons, send new photo and update Redis
-                        try:
-                            if moon_image:
-                                photo = BufferedInputFile(
-                                    moon_image.getvalue(),
-                                    filename=f"moon_phase_{target_date.isoformat()}.png"
-                                )
-
-                                phase_info = moon_data['moon_phase']
-                                caption = f"<b>{phase_info['phase_name']}</b>"
-
-                                new_photo_message = await callback.message.answer_photo(photo=photo, caption=caption)
-
-                                # Update Redis with new message ID
-                                await redis_service.set_moon_photo_message(
-                                    user.user_id,
-                                    callback.message.chat.id,
-                                    new_photo_message.message_id,
-                                    callback.message.message_id
-                                )
-
-                                moon_image.close()
-                        except Exception as send_error:
-                            logger.error(f"Error sending new moon image: {send_error}")
-
-        # Update the text message
         keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user)
         formatted_message = moon_service.format_moon_info_message(moon_data)
 
-        try:
-            await callback.message.edit_text(formatted_message, reply_markup=keyboard)
-            if not update_photo:  # Only answer callback if it's not a date change
-                await callback.answer()
-        except Exception as edit_error:
-            if "message is not modified" in str(edit_error).lower():
-                await callback.answer()
-            else:
-                logger.error(f"Error editing message: {edit_error}")
-                await callback.answer("❌ Error updating", show_alert=True)
+        await callback.message.edit_text(formatted_message, reply_markup=keyboard)
 
     except Exception as e:
-        logger.error(f"Error updating moon info: {e}")
-        await callback.answer("❌ Error occurred", show_alert=True)
+        if "message is not modified" in str(e).lower():
+            await callback.answer()
+        else:
+            logger.error(f"Error in _update_moon_info: {e}")
+            await callback.answer("❌ An error occurred while updating.", show_alert=True)
 
 async def moon_noop_callback(callback: CallbackQuery):
     await callback.answer()
 
-def _extract_current_date_from_message(message_text: str) -> Optional[date]:
-    try:
-        if not message_text:
-            return None
-
-        # Extract year, month, day
-        date_pattern = r'(\w+day),\s+(\w+)\s+(\d{1,2}),\s+(\d{4})'
-        match = re.search(date_pattern, message_text)
-
-        if match:
-            month_name = match.group(2)
-            day = int(match.group(3))
-            year = int(match.group(4))
-
-            # Parse month name to number
-            date_str = f"{month_name} {day}, {year}"
-            parsed_date = datetime.strptime(date_str, "%B %d, %Y").date()
-            return parsed_date
-
-        return None
-
-    except Exception as e:
-        logger.error(f"Error extracting date from message: {e}")
-        return None
-
 def register_moon_handlers(dp: Dispatcher):
     dp.message.register(cmd_moon, Command("moon"))
     dp.message.register(moon_button_handler, F.text == "🌙 Moon")
-    dp.callback_query.register(moon_date_callback, F.data.startswith("moon_date:"))
-    dp.callback_query.register(moon_refresh_callback, F.data.startswith("moon_refresh:"))
+    dp.callback_query.register(moon_navigation_callback, F.data.startswith("moon_date:") | F.data.startswith("moon_refresh:"))
     dp.callback_query.register(moon_noop_callback, F.data == "moon_noop")

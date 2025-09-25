@@ -374,7 +374,7 @@ class MoonService:
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
         message += f"<b>Trend:</b> {trend} ({'Growing' if phase.get('is_waxing', True) else 'Shrinking'})\n\n"
 
-        message += f"<b>Distance from Earth:</b>\n"
+        message += f"<b>Distance from you:</b>\n"
         message += f"• {distance['km']:,.0f} km\n"
         message += f"• {distance['miles']:,.0f} miles\n\n"
 
