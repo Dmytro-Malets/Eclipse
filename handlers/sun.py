@@ -137,7 +137,7 @@ async def sun_date_callback(callback: CallbackQuery, user: User):
             await callback.answer()
         except Exception as edit_error:
             if "message is not modified" in str(edit_error).lower():
-                await callback.answer("Already showing this date", show_alert=False)
+                await callback.answer()
             else:
                 logger.error(f"Error editing message: {edit_error}")
                 await callback.answer("❌ Error updating", show_alert=True)

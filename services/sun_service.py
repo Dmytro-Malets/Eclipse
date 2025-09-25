@@ -5,14 +5,13 @@ from astral import LocationInfo
 from astral.sun import sun, azimuth, elevation
 from database.models import User
 from .uv_service import UVService
-from config.settings import OPENWEATHER_API_KEY
 
 logger = logging.getLogger(__name__)
 
 
 class SunService:
     def __init__(self):
-        self.uv_service = UVService(OPENWEATHER_API_KEY) if OPENWEATHER_API_KEY else None
+        self.uv_service = UVService()
 
     @staticmethod
     def create_location_info(user: User) -> Optional[LocationInfo]:

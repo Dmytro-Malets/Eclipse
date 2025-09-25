@@ -37,7 +37,6 @@ services:
       MODE: ${MODE}
       BOT_TOKEN: ${BOT_TOKEN}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
       DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@postgres:${DB_PORT}/${DB_NAME}
       REDIS_URL: ${REDIS_URL}
     volumes:
