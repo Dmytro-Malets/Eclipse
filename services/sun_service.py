@@ -133,11 +133,11 @@ class SunService:
         if now < sun_times['sunrise']:
             time_to_sunrise = sun_times['sunrise'] - now
             formatted_time = SunService._format_time_until(time_to_sunrise)
-            return f"<b>Sun rises in:<b> {formatted_time}"
+            return f"<b>Sun rises in:</b> {formatted_time}"
         elif now < sun_times['sunset']:
             time_to_sunset = sun_times['sunset'] - now
             formatted_time = SunService._format_time_until(time_to_sunset)
-            return f"<b>Sun sets in:<b> {formatted_time}"
+            return f"<b>Sun sets in:</b> {formatted_time}"
         else:
             return "<b>Sun has set</b>"
 
