@@ -58,16 +58,16 @@ class NASAAstronomyService:
                 async with session.get(self.endpoints['apod'], params=params) as response:
                     if response.status == 200:
                         data = await response.json()
-                        copyright = data.get('copyright', 'NASA')
-                        if copyright:
-                            copyright = copyright.replace('\n', ' ').strip()
+                        copyright_text = data.get('copyright', 'NASA')
+                        if copyright_text:
+                            copyright_text = copyright_text.replace('\n', ' ').strip()
                         return {
                             'title': data.get('title', 'Unknown'),
                             'explanation': data.get('explanation', ''),
                             'url': data.get('url', ''),
                             'media_type': data.get('media_type', 'image'),
                             'date': data.get('date', ''),
-                            'copyright': copyright,
+                            'copyright': copyright_text,
                             'thumbnail_url': data.get('thumbnail_url')
                         }
         except Exception as e:
