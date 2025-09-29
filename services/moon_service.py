@@ -1,6 +1,7 @@
 import logging, pytz, io
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.transforms as transforms
 import numpy as np
 from datetime import datetime, date, time, timedelta
 from typing import Dict, Any, Optional, BinaryIO
@@ -64,8 +65,11 @@ class MoonService:
             # Get moon distance
             distance = self._get_moon_distance(observer, target_datetime)
 
+            # Calculate parallactic angle for proper moon orientation
+            parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
+
             # Generate moon phase image
-            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_phase['is_waxing'])
+            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_phase['is_waxing'], -parallactic_angle)
 
             result = {
                 'location': {
@@ -256,7 +260,48 @@ class MoonService:
             logger.error(f"Error calculating moon distance: {e}")
             return {'km': 0, 'miles': 0}
 
-    def _generate_moon_image(self, illumination_percent: float, is_waxing: bool = True) -> BinaryIO | None:
+    def _calculate_parallactic_angle(self, observer, user: User, target_datetime: datetime) -> float:
+        try:
+            target_utc = target_datetime.astimezone(utc)
+            t = self.ts.from_datetime(target_utc)
+
+            # Get Moon's position
+            moon_obs = observer.at(t).observe(self.moon).apparent()
+
+            # Get altitude and azimuth for logging purposes
+            alt, az, _ = moon_obs.altaz()
+
+            # Get Right Ascension and Declination
+            ra, dec, _ = moon_obs.radec()
+
+            # Get observer's latitude in radians from the user object
+            lat_rad = np.radians(user.latitude)
+
+            # Calculate hour angle
+            # Using Greenwich Apparent Sidereal Time (GAST)
+            gast_rad = t.gast * np.pi / 12.0  # GAST in hours to radians
+            longitude_rad = np.radians(user.longitude)
+            # Local Sidereal Time = GAST + Longitude
+            lst_rad = gast_rad + longitude_rad
+            # Hour Angle = LST - Right Ascension
+            hour_angle_rad = lst_rad - ra.radians
+
+            # Calculate parallactic angle. Formula: q = atan2(sin(h), cos(dec)*tan(lat) - sin(dec)*cos(h))
+            dec_rad = dec.radians
+
+            numerator = np.sin(hour_angle_rad)
+            denominator = np.cos(dec_rad) * np.tan(lat_rad) - np.sin(dec_rad) * np.cos(hour_angle_rad)
+
+            parallactic_angle_rad = np.arctan2(numerator, denominator)
+            parallactic_angle_deg = np.degrees(parallactic_angle_rad)
+
+            return parallactic_angle_deg
+
+        except Exception as e:
+            logger.error(f"Error calculating parallactic angle: {e}")
+            return 0.0
+
+    def _generate_moon_image(self, illumination_percent: float, is_waxing: bool = True, rotation_angle: float = 0.0) -> BinaryIO | None:
         try:
             fig, ax = plt.subplots(1, 1, figsize=(6, 6))
             fig.patch.set_facecolor('black')
@@ -265,17 +310,20 @@ class MoonService:
             ax.set_ylim(-1.2, 1.2)
             ax.axis('off')
 
-            moon_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', edgecolor='#555555', linewidth=2)
+            # Create a transform for rotation around the center
+            transform = transforms.Affine2D().rotate_deg(rotation_angle) + ax.transData
+
+            moon_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', edgecolor='#555555', linewidth=2, transform=transform)
             ax.add_patch(moon_circle)
 
             illumination_ratio = illumination_percent / 100.0
 
             if illumination_ratio < 0.01:
                 # New Moon
-                dark_circle = patches.Circle((0, 0), 1, facecolor='#2c2c2c')
+                dark_circle = patches.Circle((0, 0), 1, facecolor='#2c2c2c', transform=transform)
                 ax.add_patch(dark_circle)
             elif illumination_ratio < 0.99:
-                self._draw_moon_phase(ax, illumination_ratio, is_waxing)
+                self._draw_moon_phase(ax, illumination_ratio, is_waxing, transform)
 
             # Adding text
             ax.text(0, -1.4, f'{illumination_percent}%', ha='center', va='center', fontsize=16, color='white', weight='bold')
@@ -293,7 +341,7 @@ class MoonService:
             return None
 
     @staticmethod
-    def _draw_moon_phase(ax, illumination_ratio: float, is_waxing: bool):
+    def _draw_moon_phase(ax, illumination_ratio: float, is_waxing: bool, transform=None):
         n_points = 200
 
         if illumination_ratio <= 0.5:
@@ -318,12 +366,12 @@ class MoonService:
                 x_points = np.concatenate([x_right, x_terminator[::-1]])
                 y_points = np.concatenate([y_right, y_right[::-1]])
 
-            ax.fill(x_points, y_points, color='#2c2c2c', alpha=0.9)
+            ax.fill(x_points, y_points, color='#2c2c2c', alpha=0.9, transform=transform)
 
         else:
             # Gibbous
             # First, a full illuminated circle
-            full_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', alpha=0.9)
+            full_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', alpha=0.9, transform=transform)
             ax.add_patch(full_circle)
 
             # k from 0 (quarter) to 1 (full moon)
@@ -349,7 +397,7 @@ class MoonService:
                 x_dark = np.concatenate([x_dark_edge, x_terminator[::-1]])
                 y_dark = np.concatenate([y_dark_edge, y_dark_edge[::-1]])
 
-                ax.fill(x_dark, y_dark, color='#2c2c2c', alpha=0.9)
+                ax.fill(x_dark, y_dark, color='#2c2c2c', alpha=0.9, transform=transform)
 
     @staticmethod
     def format_moon_info_message(moon_data: Dict[str, Any]) -> str:
