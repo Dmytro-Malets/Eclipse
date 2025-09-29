@@ -10,8 +10,7 @@ from services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 
-def get_location_prompt() -> str:
-
+def get_location_prompt(user: User) -> str:
     cities = [
         "London", "New York", "Kyiv", "Tokyo", "Paris",
         "Berlin", "Madrid", "Rome", "Melbourne", "Toronto",
@@ -22,84 +21,140 @@ def get_location_prompt() -> str:
     ]
 
     example_city = random.choice(cities)
+
+    if user.has_location:
+        current_location = f"📍 <b>Your current location:</b> {user.city}\n\n"
+    else:
+        current_location = ""
+
     return (
-        "<b>Reply to this message with your location name:</b>\n\n"
-        f"<b>Example:</b> <code>{example_city}</code>\n\n"
-        "<i>Use English names for best results</i>"
+        f"{current_location}"
+        "<b>To register new location, reply to this message with:</b>\n\n"
+        f"Place name. Example: <code>{example_city}</code> <b>or</b> Telegram location pin"
     )
 
 async def cmd_location(message: Message, user: User):
+    if any([message.photo, message.video, message.document, message.sticker,
+            message.audio, message.voice, message.animation, message.video_note]):
+        await message.answer(
+            "❌ <b>Invalid input</b>\n\n"
+            "<b>Please send:</b>\n"
+            "Location name as text, or use Telegram location pin\n\n" +
+            get_location_prompt(user)
+        )
+        return
+
     args = message.text.split(maxsplit=1)
 
     if len(args) < 2:
         await message.answer(
             "❌ Please specify a location!\n\n"
             "<b>Example:</b> <code>/location Miami</code>\n\n"
-            "<i>You can also use the \"📍Location button\"</i>"
+            "<i>You can also use the \"📍Location\" button</i>"
         )
         return
 
     location_name = args[1]
-    await process_location_registration(message, user, location_name)
+    await process_location_by_name(message, user, location_name)
 
-async def location_button_handler(message: Message):
-    await message.answer(get_location_prompt())
+async def location_button_handler(message: Message, user: User):
+    await message.answer(get_location_prompt(user))
 
 async def location_reply_handler(message: Message, user: User):
     if (message.reply_to_message and
             message.reply_to_message.from_user.is_bot and
             message.reply_to_message.text and
-            "Reply to this message with your location name" in message.reply_to_message.text):
-        location_name = message.text.strip()
-        await process_location_registration(message, user, location_name)
+            "To register new location" in message.reply_to_message.text):
 
-async def process_location_registration(message: Message, user: User, location_name: str):
-    processing_msg = await message.answer("Searching for location...")
+        # Check if user sent a location pin
+        if message.location:
+            await process_location_by_coordinates(message, user, message.location.latitude, message.location.longitude)
+            return
+
+        # Check if user sent text
+        if message.text:
+            location_name = message.text.strip()
+            await process_location_by_name(message, user, location_name)
+            return
+
+        # User sent something else (photo, sticker, etc.)
+        await message.answer(
+            "❌ <b>Invalid input</b>\n\n"
+            "<b>Please send:</b>\n"
+            "Location name as text, or Telegram location pin\n\n" +
+            get_location_prompt(user)
+        )
+
+async def process_location_by_name(message: Message, user: User, location_name: str):
+    processing_msg = await message.answer("🔍 Searching for location...")
     try:
         location_data = await location_service.process_location(location_name)
 
         if not location_data:
             error_and_prompt = (
-                f"❌ <b>Location not found: '{location_name}'</b>\n\n"
-                "Please check spelling and try again\n\n"
-                "<b>Tips:</b>\n"
-                "▫️ Use English names\n"
-                "▫️ Check for typos\n\n"
-                "💡 <i>Try searching for a larger nearby city</i>\n\n"
-                "───────────────────────\n\n" +
-                get_location_prompt()
+                    f"❌ <b>Location not found: '{location_name}'</b>\n\n"
+                    "Please check spelling and try again\n\n"
+                    "<b>Tips:</b>\n"
+                    "▫️ Try English names\n"
+                    "▫️ Check for typos\n\n"
+                    "💡 <i>Try searching for a larger nearby city</i>\n\n" +
+                    get_location_prompt(user)
             )
             await processing_msg.edit_text(error_and_prompt)
             return
 
-        await message.answer_location(latitude=location_data['latitude'], longitude=location_data['longitude'])
-
-        await processing_msg.delete()
-
-        confirmation_text = format_location_confirmation(location_data)
-
-        callback_data = f"loc_confirm:{user.user_id}"
-
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Confirm", callback_data=callback_data),
-                InlineKeyboardButton(text="❌ Change Location", callback_data="loc_different")
-            ]
-        ])
-
-        await message.answer(text=confirmation_text, reply_markup=keyboard)
-
-        # Store in Redis for 5 minutes
-        await redis_service.set_temp_location(user.user_id, location_data, expire_seconds=600)
+        await show_location_confirmation(message, processing_msg, user, location_data)
 
     except Exception as e:
-        logger.error(f"Error processing location registration: {e}")
+        logger.error(f"Error processing location by name: {e}")
         await processing_msg.edit_text(
             "❌ <b>Error processing location</b>\n\n"
-            "Please try again later or contact support\n\n"
-            "───────────────────────\n\n" +
-            get_location_prompt()
+            "Please try again later or contact support\n\n" +
+            get_location_prompt(user)
         )
+
+async def process_location_by_coordinates(message: Message, user: User, latitude: float, longitude: float):
+    processing_msg = await message.answer("📍 Processing location coordinates...")
+    try:
+        location_data = await location_service.process_location_by_coordinates(latitude, longitude)
+
+        if not location_data:
+            error_and_prompt = (
+                    "❌ <b>Could not determine location from coordinates</b>\n\n"
+                    "Please try again or use location name instead\n\n" +
+                    get_location_prompt(user)
+            )
+            await processing_msg.edit_text(error_and_prompt)
+            return
+
+        await show_location_confirmation(message, processing_msg, user, location_data)
+
+    except Exception as e:
+        logger.error(f"Error processing location by coordinates: {e}")
+        await processing_msg.edit_text(
+            "❌ <b>Error processing location</b>\n\n"
+            "Please try again later or contact support\n\n" +
+            get_location_prompt(user)
+        )
+
+async def show_location_confirmation(message: Message, processing_msg: Message, user: User, location_data: Dict[str, Any]):
+    await message.answer_location(latitude=location_data['latitude'], longitude=location_data['longitude'])
+    await processing_msg.delete()
+
+    confirmation_text = format_location_confirmation(location_data)
+    callback_data = f"loc_confirm:{user.user_id}"
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Confirm", callback_data=callback_data),
+            InlineKeyboardButton(text="❌ Change Location", callback_data="loc_different")
+        ]
+    ])
+
+    await message.answer(text=confirmation_text, reply_markup=keyboard)
+
+    # Store in Redis for 10 minutes
+    await redis_service.set_temp_location(user.user_id, location_data, expire_seconds=600)
 
 def format_location_confirmation(location_data: Dict[str, Any]) -> str:
     time_info = location_data['current_time']
@@ -144,8 +199,7 @@ async def location_confirm_callback(callback: CallbackQuery, user: User):
 
         if not location_data:
             await callback.message.edit_text(
-                "⌛️ <b>Location data expired</b>\n\n" + get_location_prompt(),
-                reply_markup=None
+                "⌛️ <b>Location data expired</b>\n\n" + get_location_prompt(user), reply_markup=None
             )
             await callback.answer("Please enter your location again", show_alert=True)
             return
@@ -159,18 +213,18 @@ async def location_confirm_callback(callback: CallbackQuery, user: User):
         await callback.message.edit_text(
             f"✅ <b>Location Successfully Registered!</b>\n\n"
             f"<b>Location:</b> {updated_user.city}\n\n"
-            f"🔄 <i>To change your location, use /location command again</i>"
+            f"🔄 <i>To change your location, use /location command or \"📍Location\" button</i>"
         )
 
         await callback.answer("✅ Location confirmed and saved!")
 
     except Exception as e:
         logger.error(f"Error confirming location: {e}")
-        await callback.message.edit_text("❌ <b>Error occurred</b>\n\n" + get_location_prompt(), reply_markup=None)
+        await callback.message.edit_text("❌ <b>Error occurred</b>\n\n" + get_location_prompt(user), reply_markup=None)
         await callback.answer("❌ Error occurred, please try again", show_alert=True)
 
-async def location_different_callback(callback: CallbackQuery):
-    await callback.message.edit_text(get_location_prompt())
+async def location_different_callback(callback: CallbackQuery, user: User):
+    await callback.message.edit_text(get_location_prompt(user))
     await callback.answer()
 
 def register_location_handlers(dp: Dispatcher):

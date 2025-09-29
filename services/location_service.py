@@ -77,6 +77,64 @@ class LocationService:
             logger.error(f"Error geocoding location {location_name}: {e}")
             return None
 
+    async def reverse_geocode(self, latitude: float, longitude: float) -> Optional[Dict[str, Any]]:
+        params = {
+            'latlng': f"{latitude},{longitude}",
+            'key': self.api_key,
+            'result_type': 'locality|administrative_area_level_1|country'  # Prioritize city-level results
+        }
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.geocoding_url, params=params) as response:
+                    if response.status != 200:
+                        logger.error(f"Google Reverse Geocoding API HTTP error: {response.status}")
+                        return None
+
+                    data = await response.json()
+
+                    if data['status'] != 'OK':
+                        logger.error(f"Google Reverse Geocoding API error: {data['status']}")
+                        return None
+
+                    if not data['results']:
+                        logger.info(f"No results for coordinates: {latitude}, {longitude}")
+                        return None
+
+                    result = data['results'][0]
+
+                    # Extract location components
+                    address_components = result.get('address_components', [])
+                    country = ''
+                    locality = ''
+
+                    for component in address_components:
+                        types = component.get('types', [])
+                        if 'country' in types:
+                            country = component.get('long_name', '')
+                        elif 'locality' in types:
+                            locality = component.get('long_name', '')
+                        elif 'administrative_area_level_1' in types and not locality:
+                            locality = component.get('long_name', '')
+
+                    # Use locality as main name, fallback to formatted address first part
+                    if not locality:
+                        formatted_parts = result['formatted_address'].split(',')
+                        locality = formatted_parts[0].strip() if formatted_parts else f"{latitude:.2f}, {longitude:.2f}"
+
+                    return {
+                        'name': locality,
+                        'full_name': result['formatted_address'],
+                        'latitude': latitude,
+                        'longitude': longitude,
+                        'country': country,
+                        'place_id': result.get('place_id', '')
+                    }
+
+        except Exception as e:
+            logger.error(f"Error reverse geocoding coordinates {latitude}, {longitude}: {e}")
+            return None
+
     async def get_timezone(self, latitude: float, longitude: float, timestamp: Optional[int] = None) -> Optional[str]:
 
         if timestamp is None:
@@ -124,6 +182,39 @@ class LocationService:
             logger.error(f"Error getting current time for timezone {timezone_str}: {e}")
             return None
 
+    @staticmethod
+    def _generate_location_name(latitude: float) -> str:
+        abs_lat = abs(latitude)
+        # Polar regions
+        if abs_lat > 66.5:
+            if latitude > 0:
+                return "Arctic Region"
+            else:
+                return "Antarctic Region"
+
+        region_name = "Remote Area"
+        return region_name
+
+    @staticmethod
+    def _calculate_timezone_from_longitude(latitude: float, longitude: float) -> str:
+        # Line Islands (Kiribati) - UTC+14
+        if -160 <= longitude <= -150 and -5 <= latitude <= 5:
+            return "Pacific/Kiritimati"
+        # Samoa - UTC+13
+        if -173 <= longitude <= -171 and -15 <= latitude <= -13:
+            return "Pacific/Apia"
+        # Tonga - UTC+13
+        if -176 <= longitude <= -173 and -22 <= latitude <= -15:
+            return "Pacific/Tongatapu"
+
+        offset_hours = round(longitude / 15)
+
+        # POSIX convention: Etc/GMT uses inverted signs
+        if offset_hours >= 0:
+            return f"Etc/GMT-{offset_hours}"
+        else:
+            return f"Etc/GMT+{-offset_hours}"
+
     async def process_location(self, location_name: str) -> Optional[Dict[str, Any]]:
 
         # Step 1: Geocode the location
@@ -153,9 +244,51 @@ class LocationService:
         logger.info(f"📍 Successfully processed location: {location_name} -> {result['name']}")
         return result
 
+    async def process_location_by_coordinates(self, latitude: float, longitude: float) -> Optional[Dict[str, Any]]:
+
+        # Step 1: Get timezone
+        timezone_str = await self.get_timezone(latitude, longitude)
+        if not timezone_str:
+            logger.warning(f"Could not determine timezone for coordinates {latitude}, {longitude}")
+            timezone_str = self._calculate_timezone_from_longitude(latitude, longitude)
+
+        # Step 2: Get current time
+        time_data = self.get_current_time(timezone_str)
+        if not time_data:
+            logger.warning(f"Could not get current time for {timezone_str}")
+            return None
+
+        # Step 3: Try to get location name via reverse geocoding
+        location_data = await self.reverse_geocode(latitude, longitude)
+
+        # If reverse geocoding failed or returned very generic result, use custom name
+        if location_data:
+            name = location_data['name']
+            full_name = location_data['full_name']
+            country = location_data.get('country', '')
+        else:
+            # Fallback for remote/unknown locations
+            name = self._generate_location_name(latitude)
+            full_name = f"{name} ({latitude:.4f} lat, {longitude:.4f} lon)"
+            country = ''
+
+        # Combine all data
+        result = {
+            'name': name,
+            'full_name': full_name,
+            'latitude': latitude,
+            'longitude': longitude,
+            'country': country,
+            'timezone': timezone_str,
+            'current_time': time_data,
+            'place_id': location_data.get('place_id', '') if location_data else ''
+        }
+
+        logger.info(f"📍 Successfully processed coordinates: {latitude}, {longitude} -> {result['name']}")
+        return result
+
 
 location_service = LocationService()
-
 
 def decimal_to_dms(decimal_deg: float, is_longitude: bool = False) -> str:
     """Convert decimal degrees to degrees, minutes, seconds format"""
@@ -170,7 +303,6 @@ def decimal_to_dms(decimal_deg: float, is_longitude: bool = False) -> str:
         direction = "N" if decimal_deg >= 0 else "S"
 
     return f"{degrees}°{minutes}'{seconds:.1f}\"{direction}"
-
 
 def format_utc_offset(offset_str: str) -> str:
     """Convert +0300 format to GMT+3 format"""
