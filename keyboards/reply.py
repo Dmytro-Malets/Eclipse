@@ -3,7 +3,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📍 Location"), KeyboardButton(text="🪐 Astronomy")],
+            [KeyboardButton(text="📍 Location"), KeyboardButton(text="🪐 Space Today")],
             [KeyboardButton(text="🌙 Moon"), KeyboardButton(text="☀️ Sun")],
             [KeyboardButton(text="/help"), KeyboardButton(text="📸 Mars Photos")],
         ],

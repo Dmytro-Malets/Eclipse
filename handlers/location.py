@@ -147,7 +147,7 @@ async def show_location_confirmation(message: Message, processing_msg: Message, 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="✅ Confirm", callback_data=callback_data),
-            InlineKeyboardButton(text="❌ Change Location", callback_data="loc_different")
+            InlineKeyboardButton(text="🔄 Change Location", callback_data="loc_different")
         ]
     ])
 
@@ -213,7 +213,7 @@ async def location_confirm_callback(callback: CallbackQuery, user: User):
         await callback.message.edit_text(
             f"✅ <b>Location Successfully Registered!</b>\n\n"
             f"<b>Location:</b> {updated_user.city}\n\n"
-            f"🔄 <i>To change your location, use /location command or \"📍Location\" button</i>"
+            f"<i>To change your location, use /location command or \"📍Location\" button</i>"
         )
 
         await callback.answer("✅ Location confirmed and saved!")

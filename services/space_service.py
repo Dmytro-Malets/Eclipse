@@ -22,14 +22,14 @@ class NASAAstronomyService:
             'neo': f"{self.base_url}/neo/rest/v1/feed",  # Near Earth Objects
         }
 
-    async def get_astronomy_data(self, user: User = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_space_data(self, user: User = None) -> Optional[List[Dict[str, Any]]]:
         target_date = self._get_user_date(user) if user and user.has_location else date.today()
-        astronomy_data = []
+        space_data = []
 
         # 1. Astronomy Picture of the Day
         apod_data = await self._get_apod(target_date)
         if apod_data:
-            astronomy_data.append({
+            space_data.append({
                 'type': 'apod',
                 'title': 'NASA Astronomy Picture of the Day',
                 'data': apod_data
@@ -38,13 +38,13 @@ class NASAAstronomyService:
         # 2. Near Earth Objects
         neo_data = await self._get_near_earth_objects(target_date)
         if neo_data:
-            astronomy_data.append({
+            space_data.append({
                 'type': 'neo',
                 'title': 'Near Earth Objects Today',
                 'data': neo_data
             })
 
-        return astronomy_data if astronomy_data else None
+        return space_data if space_data else None
 
     async def _get_apod(self, target_date: date) -> Optional[Dict[str, Any]]:
         params = {
@@ -162,18 +162,18 @@ class NASAAstronomyService:
 
         return truncated
 
-    def format_astronomy_message(self, astronomy_data: List[Dict[str, Any]], user: User = None) -> str:
-        if not astronomy_data:
-            return "❌ <b>Astronomy data unavailable</b>\n\nPlease try again later."
+    def format_space_message(self, space_data: List[Dict[str, Any]], user: User = None) -> str:
+        if not space_data:
+            return "❌ <b>Data unavailable</b>\n\nPlease try again later."
         try:
             user_date = self._get_user_date(user) if user and user.has_location else date.today()
-            header = f"<b>🪐 Astronomy Data for {user_date.strftime('%B %d, %Y')}</b>\n\n"
+            header = f"<b>🪐 Space Today • {user_date.strftime('%B %d, %Y')}</b>\n\n"
         except Exception:
-            header = f"<b>🪐 Astronomy Data for {date.today().strftime('%B %d, %Y')}</b>\n\n"
+            header = f"<b>🪐 Space Today • {date.today().strftime('%B %d, %Y')}</b>\n\n"
 
         message = header
 
-        for item in astronomy_data:
+        for item in space_data:
             item_type = item['type']
             title = item['title']
             data = item['data']
@@ -236,4 +236,4 @@ class NASAAstronomyService:
         return message
 
 
-astronomy_service = NASAAstronomyService()
+space_service = NASAAstronomyService()

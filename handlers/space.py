@@ -3,25 +3,25 @@ from aiogram import Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto
 from database.models import User
-from services.astronomy_service import astronomy_service
+from services.space_service import space_service
 
 logger = logging.getLogger(__name__)
 
-async def cmd_astronomy(message: Message, user: User = None):
-    await show_astronomy_data(message, user)
+async def cmd_space(message: Message, user: User = None):
+    await show_space_data(message, user)
 
-async def astronomy_button_handler(message: Message, user: User = None):
-    await show_astronomy_data(message, user)
+async def space_button_handler(message: Message, user: User = None):
+    await show_space_data(message, user)
 
-async def show_astronomy_data(message: Message, user: User = None):
-    processing_msg = await message.answer("🪐 Loading astronomy data...")
+async def show_space_data(message: Message, user: User = None):
+    processing_msg = await message.answer("🪐 Loading space data...")
 
     try:
-        astronomy_data = await astronomy_service.get_astronomy_data(user)
+        space_data = await space_service.get_space_data(user)
 
-        if not astronomy_data:
+        if not space_data:
             await processing_msg.edit_text(
-                "❌ <b>Unable to load astronomy data</b>\n\n"
+                "❌ <b>Unable to load space data</b>\n\n"
                 "NASA services may be temporarily unavailable.\n"
                 "Please try again later."
             )
@@ -32,13 +32,13 @@ async def show_astronomy_data(message: Message, user: User = None):
 
         # Get APOD data for image preview
         apod_data = None
-        for item in astronomy_data:
+        for item in space_data:
             if item['type'] == 'apod':
                 apod_data = item['data']
                 break
 
-        formatted_message = astronomy_service.format_astronomy_message(astronomy_data, user)
-        keyboard = create_astronomy_keyboard(user)
+        formatted_message = space_service.format_space_message(space_data, user)
+        keyboard = create_space_keyboard(user)
 
         is_image = apod_data and apod_data.get('media_type') == 'image'
         is_video = apod_data and apod_data.get('media_type') == 'video'
@@ -59,14 +59,14 @@ async def show_astronomy_data(message: Message, user: User = None):
             await message.answer(formatted_message, reply_markup=keyboard, disable_web_page_preview=False)
 
     except Exception as e:
-        logger.error(f"Error showing astronomy data: {e}")
+        logger.error(f"Error showing space data: {e}")
         await processing_msg.edit_text(
             "❌ <b>Error occurred</b>\n\n"
-            "Failed to retrieve astronomy data.\n"
+            "Failed to retrieve space data.\n"
             "Please try again later."
         )
 
-def create_astronomy_keyboard(user: User = None) -> InlineKeyboardMarkup:
+def create_space_keyboard(user: User = None) -> InlineKeyboardMarkup:
     buttons = []
 
     buttons.append([
@@ -78,7 +78,7 @@ def create_astronomy_keyboard(user: User = None) -> InlineKeyboardMarkup:
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-async def astronomy_refresh_callback(callback: CallbackQuery, user: User = None):
+async def space_refresh_callback(callback: CallbackQuery, user: User = None):
     try:
         callback_user_id = int(callback.data.split(':')[1])
 
@@ -88,21 +88,21 @@ async def astronomy_refresh_callback(callback: CallbackQuery, user: User = None)
 
         await callback.answer("🔄 Refreshing data...")
 
-        astronomy_data = await astronomy_service.get_astronomy_data(user)
+        space_data = await space_service.get_space_data(user)
 
-        if not astronomy_data:
+        if not space_data:
             await callback.answer("❌ Unable to refresh data", show_alert=True)
             return
 
         # Get APOD data for image preview
         apod_data = None
-        for item in astronomy_data:
+        for item in space_data:
             if item['type'] == 'apod':
                 apod_data = item['data']
                 break
 
-        formatted_message = astronomy_service.format_astronomy_message(astronomy_data, user)
-        keyboard = create_astronomy_keyboard(user)
+        formatted_message = space_service.format_space_message(space_data, user)
+        keyboard = create_space_keyboard(user)
 
         try:
             is_new_image = apod_data and apod_data.get('media_type') == 'image'
@@ -140,10 +140,10 @@ async def astronomy_refresh_callback(callback: CallbackQuery, user: User = None)
                 await callback.answer("❌ Error updating message", show_alert=True)
 
     except Exception as e:
-        logger.error(f"Error in astronomy refresh callback: {e}")
+        logger.error(f"Error in space refresh callback: {e}")
         await callback.answer("❌ Error occurred", show_alert=True)
 
-def register_astronomy_handlers(dp: Dispatcher):
-    dp.message.register(cmd_astronomy, Command("astronomy"))
-    dp.message.register(astronomy_button_handler, F.text == "🪐 Astronomy")
-    dp.callback_query.register(astronomy_refresh_callback, F.data.startswith("astro_refresh:"))
+def register_space_handlers(dp: Dispatcher):
+    dp.message.register(cmd_space, Command("space"))
+    dp.message.register(space_button_handler, F.text == "🪐 Space Today")
+    dp.callback_query.register(space_refresh_callback, F.data.startswith("astro_refresh:"))
