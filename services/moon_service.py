@@ -65,11 +65,16 @@ class MoonService:
             # Get moon distance
             distance = self._get_moon_distance(observer, target_datetime)
 
-            # Calculate parallactic angle for proper moon orientation
+            # Calculate Position Angle of the Moon's Bright Limb
+            pa_bright_limb = self._calculate_bright_limb_position_angle(target_datetime)
+
+            # Calculate Parallactic Angle
             parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
 
+            moon_zenith_angle = pa_bright_limb - parallactic_angle
+
             # Generate moon phase image
-            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_phase['is_waxing'], -parallactic_angle)
+            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_phase['is_waxing'], moon_zenith_angle)
 
             result = {
                 'location': {
@@ -217,7 +222,7 @@ class MoonService:
             return "🌒 Waxing Crescent" if is_waxing else "🌘 Waning Crescent"
         elif 49 <= illumination <= 51:
             return "🌓 First Quarter" if is_waxing else "🌗 Third Quarter"
-        elif illumination < 99:
+        elif illumination < 99.5:
             return "🌔 Waxing Gibbous" if is_waxing else "🌖 Waning Gibbous"
         else:
             return "🌕 Full Moon"
@@ -259,6 +264,44 @@ class MoonService:
         except Exception as e:
             logger.error(f"Error calculating moon distance: {e}")
             return {'km': 0, 'miles': 0}
+
+    def _calculate_bright_limb_position_angle(self, target_datetime: datetime) -> float:
+        try:
+            target_utc = target_datetime.astimezone(utc)
+            t = self.ts.from_datetime(target_utc)
+
+            # Get apparent geocentric coordinates for Sun and Moon
+            ra_moon, dec_moon, _ = self.earth.at(t).observe(self.moon).apparent().radec()
+            ra_sun, dec_sun, _ = self.earth.at(t).observe(self.sun).apparent().radec()
+
+            ra_moon_rad, dec_moon_rad = ra_moon.radians, dec_moon.radians
+            ra_sun_rad, dec_sun_rad = ra_sun.radians, dec_sun.radians
+            delta_ra = ra_sun_rad - ra_moon_rad
+
+            # Calculate Position Angle of the Sun from Moon's center
+            # (angle from North through East to the direction of the Sun)
+            y = np.cos(dec_sun_rad) * np.sin(delta_ra)
+            x = np.sin(dec_sun_rad) * np.cos(dec_moon_rad) - \
+                np.cos(dec_sun_rad) * np.sin(dec_moon_rad) * np.cos(delta_ra)
+
+            position_angle_rad = np.arctan2(y, x)
+            pa_sun_deg = np.degrees(position_angle_rad)
+
+            # Position Angle of Bright Limb = PA of Sun + 90°
+            # (the bright limb is perpendicular to the Sun's direction)
+            bright_limb_angle_deg = pa_sun_deg + 90.0
+
+            # Normalize to (-180, 180] range
+            if bright_limb_angle_deg > 180:
+                bright_limb_angle_deg -= 360.0
+            elif bright_limb_angle_deg <= -180:
+                bright_limb_angle_deg += 360.0
+
+            return bright_limb_angle_deg
+
+        except Exception as e:
+            logger.error(f"Error calculating bright limb position angle: {e}", exc_info=True)
+            return 0.0
 
     def _calculate_parallactic_angle(self, observer, user: User, target_datetime: datetime) -> float:
         try:
@@ -323,7 +366,7 @@ class MoonService:
                 dark_circle = patches.Circle((0, 0), 1, facecolor='#2c2c2c', transform=transform)
                 ax.add_patch(dark_circle)
             elif illumination_ratio < 0.99:
-                self._draw_moon_phase(ax, illumination_ratio, is_waxing, transform)
+                self._draw_moon_phase(ax, illumination_ratio, transform)
 
             # Adding text
             ax.text(0, -1.4, f'{illumination_percent}%', ha='center', va='center', fontsize=16, color='white', weight='bold')
@@ -341,7 +384,7 @@ class MoonService:
             return None
 
     @staticmethod
-    def _draw_moon_phase(ax, illumination_ratio: float, is_waxing: bool, transform=None):
+    def _draw_moon_phase(ax, illumination_ratio: float, transform=None):
         n_points = 200
 
         if illumination_ratio <= 0.5:
@@ -356,15 +399,8 @@ class MoonService:
 
             # Elliptical terminator boundary
             x_terminator = k * np.sqrt(1 - y_right ** 2)
-
-            if is_waxing:
-                # Waxing crescent: right side is illuminated
-                x_points = np.concatenate([-x_right, -x_terminator[::-1]])
-                y_points = np.concatenate([y_right, y_right[::-1]])
-            else:
-                # Waning crescent: left side illuminated
-                x_points = np.concatenate([x_right, x_terminator[::-1]])
-                y_points = np.concatenate([y_right, y_right[::-1]])
+            x_points = np.concatenate([-x_right, -x_terminator[::-1]])
+            y_points = np.concatenate([y_right, y_right[::-1]])
 
             ax.fill(x_points, y_points, color='#2c2c2c', alpha=0.9, transform=transform)
 
@@ -378,21 +414,13 @@ class MoonService:
             dark_width = 2 * (1 - illumination_ratio)  # Width of the dark part
 
             if dark_width > 0:
-                if is_waxing:
-                    # Waxing gibbous: dark part on the left
-                    theta_dark = np.linspace(np.pi / 2, 3 * np.pi / 2, n_points // 2)
-                else:
-                    # Waning gibbous: dark part on the right
-                    theta_dark = np.linspace(-np.pi / 2, np.pi / 2, n_points // 2)
+                theta_dark = np.linspace(np.pi / 2, 3 * np.pi / 2, n_points // 2)
 
                 x_dark_edge = np.cos(theta_dark)
                 y_dark_edge = np.sin(theta_dark)
 
                 # Elliptical dark part boundary
                 x_terminator = (dark_width - 1) * np.sqrt(1 - y_dark_edge ** 2)
-
-                if not is_waxing:
-                    x_terminator = -x_terminator
 
                 x_dark = np.concatenate([x_dark_edge, x_terminator[::-1]])
                 y_dark = np.concatenate([y_dark_edge, y_dark_edge[::-1]])
@@ -416,7 +444,6 @@ class MoonService:
 
         message += f"<b>Moon Phase:</b> {phase['phase_name']}\n"
         message += f"<b>Illumination:</b> {phase['illumination']}%\n"
-        message += f"<b>Phase Angle:</b> {phase['phase_angle']}°\n"
         message += f"<b>Moon Age:</b> {phase['age_days']} days\n"
 
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
