@@ -74,7 +74,7 @@ class MoonService:
             moon_zenith_angle = pa_bright_limb - parallactic_angle
 
             # Generate moon phase image
-            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_phase['is_waxing'], moon_zenith_angle)
+            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_zenith_angle)
 
             result = {
                 'location': {
@@ -344,7 +344,7 @@ class MoonService:
             logger.error(f"Error calculating parallactic angle: {e}")
             return 0.0
 
-    def _generate_moon_image(self, illumination_percent: float, is_waxing: bool = True, rotation_angle: float = 0.0) -> BinaryIO | None:
+    def _generate_moon_image(self, illumination_percent: float, rotation_angle: float = 0.0) -> BinaryIO | None:
         try:
             fig, ax = plt.subplots(1, 1, figsize=(6, 6))
             fig.patch.set_facecolor('black')
@@ -406,10 +406,6 @@ class MoonService:
 
         else:
             # Gibbous
-            # First, a full illuminated circle
-            full_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', alpha=0.9, transform=transform)
-            ax.add_patch(full_circle)
-
             # k from 0 (quarter) to 1 (full moon)
             dark_width = 2 * (1 - illumination_ratio)  # Width of the dark part
 
