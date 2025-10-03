@@ -356,7 +356,7 @@ class MoonService:
             # Create a transform for rotation around the center
             transform = transforms.Affine2D().rotate_deg(rotation_angle) + ax.transData
 
-            moon_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', edgecolor='#555555', linewidth=2, transform=transform)
+            moon_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', edgecolor='#2c2c2c', linewidth=1, transform=transform)
             ax.add_patch(moon_circle)
 
             illumination_ratio = illumination_percent / 100.0
@@ -369,11 +369,11 @@ class MoonService:
                 self._draw_moon_phase(ax, illumination_ratio, transform)
 
             # Adding text
-            ax.text(0, -1.4, f'{illumination_percent}%', ha='center', va='center', fontsize=16, color='white', weight='bold')
+            ax.text(0, -1.3, f'{illumination_percent}%', ha='center', va='center', fontsize=16, color='white', weight='bold')
 
             # Save
             img_buffer = io.BytesIO()
-            plt.savefig(img_buffer, format='png', dpi=150, bbox_inches='tight', facecolor='black')
+            plt.savefig(img_buffer, format='png', dpi=250, bbox_inches='tight', facecolor='black')
             img_buffer.seek(0)
             plt.close(fig)
 
@@ -385,7 +385,7 @@ class MoonService:
 
     @staticmethod
     def _draw_moon_phase(ax, illumination_ratio: float, transform=None):
-        n_points = 200
+        n_points = 400
 
         if illumination_ratio <= 0.5:
             # Crescent
