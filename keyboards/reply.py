@@ -5,7 +5,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
         keyboard=[
             [KeyboardButton(text="📍 Location"), KeyboardButton(text="🪐 Space Today")],
             [KeyboardButton(text="🌙 Moon"), KeyboardButton(text="☀️ Sun")],
-            [KeyboardButton(text="/help"), KeyboardButton(text="📸 Mars Photos")],
+            [KeyboardButton(text="🔭 Night Sky"), KeyboardButton(text="📸 Mars Photos")],
         ],
         resize_keyboard=True,
         persistent=True
