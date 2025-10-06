@@ -5,7 +5,6 @@ import logging
 from database.database import get_db
 from database.models import User
 
-
 logger = logging.getLogger(__name__)
 
 async def get_user(user_id: int) -> Optional[User]:

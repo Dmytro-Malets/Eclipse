@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from datetime import datetime
 
+
 class Base(AsyncAttrs, DeclarativeBase):
     """Base class for all models"""
     pass
@@ -42,17 +43,3 @@ class User(Base):
     @property
     def has_location(self) -> bool:
         return all([self.city, self.latitude, self.longitude, self.timezone])
-
-    @property
-    def location_summary(self) -> str:
-        if not self.has_location:
-            return "No location set"
-
-        return f"{self.city} ({self.latitude:.2f}, {self.longitude:.2f}) - {self.timezone}"
-
-    @property
-    def coordinates(self) -> tuple:
-        if not self.has_location:
-            return (None, None)
-
-        return (self.latitude, self.longitude)
