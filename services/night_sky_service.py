@@ -287,7 +287,7 @@ class NightSkyService:
 
         stars = sky_data['stars']
         if stars:
-            message += f"<b>✨ Brightest Stars:</b>\n"
+            message += f"<b>✨ Visible Brightest Stars:</b>\n"
             for star in stars:
                 message += f"\n<b>{star['name']}</b>:\n"
                 message += f"• <b>Azimuth:</b> {star['azimuth']}°\n"
