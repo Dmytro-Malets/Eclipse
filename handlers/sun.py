@@ -64,11 +64,11 @@ def create_sun_navigation_keyboard(user_id: int, current_date: date, user: User)
     tomorrow = current_date + timedelta(days=1)
 
     if current_date == user_today:
-        current_label = "Today"
+        current_label = "today"
     elif current_date == user_today - timedelta(days=1):
-        current_label = "Yesterday"
+        current_label = "yesterday"
     elif current_date == user_today + timedelta(days=1):
-        current_label = "Tomorrow"
+        current_label = "tomorrow"
     else:
         current_label = f"{current_date.strftime('%m/%d')}"
 

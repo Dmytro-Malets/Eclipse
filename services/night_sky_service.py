@@ -227,27 +227,27 @@ class NightSkyService:
     def _get_sky_condition(sun_altitude: float) -> Dict[str, Any]:
         if sun_altitude > 0:
             return {
-                'condition': '☀️ Daytime',
+                'condition': 'Daytime',
                 'description': 'Planets and stars not visible'
             }
         elif sun_altitude > -6:
             return {
-                'condition': '🌆 Civil Twilight',
+                'condition': 'Civil Twilight',
                 'description': 'Brightest planets may be visible'
             }
         elif sun_altitude > -12:
             return {
-                'condition': '🌇 Nautical Twilight',
+                'condition': 'Nautical Twilight',
                 'description': 'Bright stars and planets visible'
             }
         elif sun_altitude > -18:
             return {
-                'condition': '🌃 Astronomical Twilight',
+                'condition': 'Astronomical Twilight',
                 'description': 'Most stars and planets visible'
             }
         else:
             return {
-                'condition': '🌌 Full Night',
+                'condition': 'Full Night',
                 'description': 'Optimal stargazing conditions'
             }
 
@@ -303,11 +303,11 @@ class NightSkyService:
 
         # Viewing tips
         if sky_data['is_night']:
-            message += "<i>💡 Tip: Find a dark location away from city lights for best viewing.</i>"
+            message += "<i>💡 Find a dark location away from city lights for best viewing.</i>"
         else:
             message += "<i>💡 Wait for nighttime for optimal stargazing conditions.</i>"
 
-        message += "\n<i>☁️ Note: Clear skies are essential - check your local weather forecast.</i>"
+        message += "\n<i>☁️ Clear skies are essential - check your local weather forecast.</i>"
         return message
 
 
