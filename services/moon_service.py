@@ -141,30 +141,21 @@ class MoonService:
             # Convert to UTC for skyfield
             target_utc = target_datetime.astimezone(utc)
             t = self.ts.from_datetime(target_utc)
+            # One minute later
+            t_plus_minute = self.ts.from_datetime(t.utc_datetime() + timedelta(minutes=1))
 
-            # get positions relative to the geocentric
-            sun_pos = self.earth.at(t).observe(self.sun).position.km
-            moon_pos = self.earth.at(t).observe(self.moon).position.km
+            phase_angle_rad = self._get_phase_angle_at_time(t)
 
-            # Vectors from Earth to the Sun and Moon
-            sun_vec = sun_pos / np.linalg.norm(sun_pos)
-            moon_vec = moon_pos / np.linalg.norm(moon_pos)
+            phase_angle_later_rad = self._get_phase_angle_at_time(t_plus_minute)
 
-            # Phase angle between vectors
-            cos_angle = np.dot(sun_vec, moon_vec)
-
-            # Limit values to avoid rounding errors
-            cos_angle = np.clip(cos_angle, -1.0, 1.0)
-            phase_angle_rad = np.arccos(cos_angle)
-            phase_angle = np.degrees(phase_angle_rad)
+            is_waxing = phase_angle_later_rad > phase_angle_rad
 
             # When angle = 0° (sun and moon in the same direction) = New Moon = 0% illumination
             # When angle = 180° (opposite directions) = Full Moon = 100% illumination
             illumination = (1 - np.cos(phase_angle_rad)) / 2 * 100
-
             moon_age = self._calculate_moon_age(t)
-            is_waxing = moon_age < 14.765  # Half of the lunar cycle
             phase_name = self._get_phase_name(illumination, is_waxing)
+            phase_angle = np.degrees(phase_angle_rad)
 
             return {
                 'phase_name': phase_name,
@@ -183,6 +174,23 @@ class MoonService:
                 'age_days': 0,
                 'is_waxing': True
             }
+
+    def _get_phase_angle_at_time(self, t) -> float:
+        # Get positions relative to the geocentric
+        sun_pos = self.earth.at(t).observe(self.sun).position.km
+        moon_pos = self.earth.at(t).observe(self.moon).position.km
+
+        # Vectors from Earth to the Sun and Moon
+        sun_vec = sun_pos / np.linalg.norm(sun_pos)
+        moon_vec = moon_pos / np.linalg.norm(moon_pos)
+
+        # Phase angle between vectors
+        cos_angle = np.dot(sun_vec, moon_vec)
+
+        # Limit values to avoid rounding errors
+        cos_angle = np.clip(cos_angle, -1.0, 1.0)
+
+        return np.arccos(cos_angle)
 
     def _calculate_moon_age(self, t) -> float | None:
         try:
@@ -443,7 +451,7 @@ class MoonService:
         message += f"<b>Moon Age:</b> {phase['age_days']} days\n"
 
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
-        message += f"<b>Trend:</b> {trend} ({'Growing' if phase.get('is_waxing', True) else 'Shrinking'})\n\n"
+        message += f"<b>Trend:</b> {trend}\n\n"
 
         message += f"<b>Distance from you:</b>\n"
         message += f"• {distance['km']:,.0f} km\n"
