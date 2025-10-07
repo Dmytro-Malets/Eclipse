@@ -65,6 +65,9 @@ class MoonService:
             # Get moon distance
             distance = self._get_moon_distance(observer, target_datetime)
 
+            # Calculate moon's apparent magnitude
+            magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
+
             # Calculate Position Angle of the Moon's Bright Limb
             pa_bright_limb = self._calculate_bright_limb_position_angle(target_datetime)
 
@@ -88,6 +91,7 @@ class MoonService:
                 'moon_phase': moon_phase,
                 'current_position': current_position,
                 'distance': distance,
+                'magnitude': magnitude,
                 'moon_image': moon_image,
                 'is_meridian_time': meridian_time is not None and target_date != user_today
             }
@@ -273,6 +277,42 @@ class MoonService:
             logger.error(f"Error calculating moon distance: {e}")
             return {'km': 0, 'miles': 0}
 
+    def _calculate_moon_magnitude(self, target_datetime: datetime, phase_angle_deg: float) -> float:
+        try:
+            # Convert to selenocentric elongation (0° = full moon, 180° = new moon)
+            alpha_deg = 180.0 - phase_angle_deg
+
+            # Calculate geocentric distance
+            target_utc = target_datetime.astimezone(utc)
+            t = self.ts.from_datetime(target_utc)
+
+            moon_obs = self.earth.at(t).observe(self.moon)
+            distance_km = moon_obs.distance().km
+
+            # Mean distance Earth-Moon in km
+            mean_distance_km = 384400.0
+
+            # Distance correction using inverse square law for brightness
+            # Factor of 5 comes from magnitude scale: Δm = 5 × log₁₀(d/d₀)
+            distance_correction = 5 * np.log10(distance_km / mean_distance_km)
+
+            # Base magnitude for full moon at mean distance
+            base_magnitude = -12.74
+
+            # Phase correction formula from Astronomical Almanac
+            # Linear term (0.026|α|) accounts for basic phase effect
+            # Quartic term (4×10^-9 α^4) accounts for opposition surge near full moon
+            phase_correction = 0.026 * abs(alpha_deg) + 4.0e-9 * (alpha_deg ** 4)
+
+            # Final apparent magnitude
+            magnitude = base_magnitude + phase_correction + distance_correction
+
+            return round(magnitude, 2)
+
+        except Exception as e:
+            logger.error(f"Error calculating moon magnitude: {e}")
+            return -12.74
+
     def _calculate_bright_limb_position_angle(self, target_datetime: datetime) -> float:
         try:
             target_utc = target_datetime.astimezone(utc)
@@ -449,6 +489,7 @@ class MoonService:
         message += f"<b>Moon Phase:</b> {phase['phase_name']}\n"
         message += f"<b>Illumination:</b> {phase['illumination']}%\n"
         message += f"<b>Moon Age:</b> {phase['age_days']} days\n"
+        message += f"<b>Magnitude:</b> {moon_data['magnitude']}\n"
 
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
         message += f"<b>Trend:</b> {trend}\n\n"
