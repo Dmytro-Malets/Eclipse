@@ -163,8 +163,7 @@ class SunService:
 
             if 'current_position' in sun_data:
                 pos = sun_data['current_position']
-                status_icon = "☀️" if pos['is_up'] else "🌙"
-                message += f"<b>Current Sun Position: {status_icon}</b>\n"
+                message += f"<b>Current Sun Position:</b>\n"
                 message += f"• <b>Azimuth:</b> {pos['azimuth']}°\n"
                 message += f"• <b>Altitude:</b> {pos['elevation']}°\n"
                 message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}\n"
