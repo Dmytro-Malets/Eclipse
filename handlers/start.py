@@ -7,31 +7,53 @@ from database.models import User
 async def cmd_start(message: Message, user: User):
     user_name = html.bold(user.mention)
     text = f"""
-👋 Hi, {user_name} !
+Welcome, {user_name}
 
-📋 Use /help to see the commands
+<b>Eclipse</b> - your personal astronomy assistant
 
-📅 You're with us since: {user.created_at.strftime('%d.%m.%Y')}
+<b>Features:</b>
+🌙 Moon phases & position
+☀️ Sun times & UV index
+🔭 Night sky objects
+🪐 NASA space news
+📸 Mars rover photos
+
+<b>Quick Start:</b>
+/help - Show available commands
+/location <i>place</i> - Set your location
     """
+
+    if not user.has_location:
+        text += "\n<i>💡 Set your location to unlock most features</i>"
+
     await message.answer(text.strip(), reply_markup=main_menu_keyboard())
 
-
-async def cmd_help(message: Message):
+async def cmd_help(message: Message, user: User):
     help_text = """
-🆘 <b>Available commands:</b>
+<b>Eclipse - Available Commands</b>
 
-/start - Bot start
-/help  - Show this menu
-/location city - Register location
-
-💬 You can also just write to me - I'll repeat everything!
+/start - Start the bot
+/help - Show this message
+/location <i>place</i> - Set your location
+/moon - Moon information
+/sun - Sun information
+/sky - Visible planets & stars
+/space - NASA Picture of the Day & NEO
+/rovers - Mars rover photo gallery
+/perseverance - Perseverance rover photos
+/curiosity - Curiosity rover photos
     """
+
+    if not user.has_location:
+        help_text += "\n<i>💡 Set your location to unlock most features</i>"
+
     await message.answer(help_text)
 
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="help", description="Show help"),
+        BotCommand(command="help", description="Show available commands"),
+        BotCommand(command="location", description="Set your location")
     ]
     await bot.set_my_commands(commands)
 
