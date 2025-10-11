@@ -39,6 +39,7 @@ async def cmd_help(message: Message, user: User):
 /sun - Sun information
 /sky - Visible planets & stars
 /space - NASA Picture of the Day & NEO
+/eclipse - Upcoming lunar eclipses
 /rovers - Mars rover photo gallery
 /perseverance - Perseverance rover photos
 /curiosity - Curiosity rover photos
