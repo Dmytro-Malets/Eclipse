@@ -229,7 +229,7 @@ class MoonService:
     def _get_phase_name(illumination: float, is_waxing: bool) -> str:
 
         if illumination < 1:
-            return "🌑 New Moon"
+            return "🌑 New Moon" if is_waxing else "🌘 Waning Crescent"
         elif illumination < 49:
             return "🌒 Waxing Crescent" if is_waxing else "🌘 Waning Crescent"
         elif 49 <= illumination <= 51:
