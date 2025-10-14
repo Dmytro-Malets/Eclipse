@@ -11,19 +11,19 @@ async def cmd_eclipse(message: Message, user: User):
     if not user.has_location:
         await message.answer(
             "❌ <b>Location not registered!</b>\n\n"
-            "To view lunar eclipse information, please register your location first.\n\n"
+            "To view eclipse information, please register your location first.\n\n"
             "Use /location command or press the 📍Location button"
         )
         return
 
-    processing_msg = await message.answer("Calculating lunar eclipse data...")
+    processing_msg = await message.answer("Calculating eclipse data...")
 
     try:
-        eclipse_data = await eclipse_service.get_upcoming_lunar_eclipses(user, 5)
+        eclipse_data = await eclipse_service.get_upcoming_eclipses(user, 5)
 
         if not eclipse_data:
             await processing_msg.edit_text(
-                "❌ <b>Error calculating lunar eclipse information</b>\n\n"
+                "❌ <b>Error calculating eclipse information</b>\n\n"
                 "Please try again later or check your location settings."
             )
             return
@@ -33,7 +33,7 @@ async def cmd_eclipse(message: Message, user: User):
         await processing_msg.edit_text(formatted_message)
 
     except Exception as e:
-        logger.error(f"Error showing lunar eclipse info for user {user.user_id}: {e}")
+        logger.error(f"Error showing eclipse info for user {user.user_id}: {e}")
         await processing_msg.edit_text(
             "❌ <b>Error occurred</b>\n\n"
             "Please try again later."

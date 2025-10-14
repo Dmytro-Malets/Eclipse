@@ -280,7 +280,7 @@ class NightSkyService:
                 message += f"\n<b>{planet['name']}</b>:\n"
                 message += f"• <b>Azimuth:</b> {planet['azimuth']}°\n"
                 message += f"• <b>Altitude:</b> {planet['altitude']}°\n"
-                message += f"• <b>Magnitude:</b> {planet['magnitude']}\n"
+                message += f"• <b>Apparent Magnitude:</b> {planet['magnitude']}\n"
             message += "\n"
         else:
             message += "<b>🪐 Planets:</b> None currently visible\n\n"
@@ -296,7 +296,7 @@ class NightSkyService:
                 if star.get('is_variable', False):
                     variation = star.get('variation') or '±0.3'
                     mag_text += f" ({variation})"
-                message += f"• <b>Magnitude:</b> {mag_text}\n"
+                message += f"• <b>Apparent Magnitude:</b> {mag_text}\n"
             message += "\n"
         else:
             message += "<b>✨ Stars:</b> Not visible from current location\n\n"
