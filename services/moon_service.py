@@ -489,7 +489,7 @@ class MoonService:
         message += f"<b>Moon Phase:</b> {phase['phase_name']}\n"
         message += f"<b>Illumination:</b> {phase['illumination']}%\n"
         message += f"<b>Moon Age:</b> {phase['age_days']} days\n"
-        message += f"<b>Magnitude:</b> {moon_data['magnitude']}\n"
+        message += f"<b>Apparent Magnitude:</b> {moon_data['magnitude']}\n"
 
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
         message += f"<b>Trend:</b> {trend}\n\n"
