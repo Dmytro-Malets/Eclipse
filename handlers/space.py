@@ -14,7 +14,7 @@ async def space_button_handler(message: Message, user: User = None):
     await show_space_data(message, user)
 
 async def show_space_data(message: Message, user: User = None):
-    processing_msg = await message.answer("🪐 Loading space data...")
+    processing_msg = await message.answer("Loading space data...")
 
     try:
         space_data = await space_service.get_space_data(user)

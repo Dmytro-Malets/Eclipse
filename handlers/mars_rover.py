@@ -21,7 +21,7 @@ async def rovers_button_handler(message: Message, user: User = None):
 
 async def show_specific_rover_photos(message: Message, user: User, rover_name: str):
     try:
-        await message.answer(f"🔄 Loading {rover_name.capitalize()} rover photos...")
+        await message.answer(f"Loading {rover_name.capitalize()} rover photos...")
 
         rover_data = await mars_rover_service.get_rover_latest_photos(rover_name, max_photos=10)
 
@@ -124,7 +124,7 @@ async def mars_rover_callback(callback: CallbackQuery, user: User = None):
             await callback.answer("❌ This button is not for you!", show_alert=True)
             return
 
-        await callback.answer("🔄 Loading Mars rover photos...")
+        await callback.answer(f"Loading {rover_name.capitalize()} rover photos...")
 
         rover_data = await mars_rover_service.get_rover_latest_photos(rover_name, max_photos=10)
 
