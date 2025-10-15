@@ -329,6 +329,7 @@ class EclipseService:
                     message += f"<b>Greatest Eclipse at:</b> {eclipse['lat_dms']}, {eclipse['lon_dms']}\n"
 
                 message += f"<b>Saros Series:</b> {eclipse['saros']}\n"
+                message += f"<b>Visibility:</b> Unknown\n"
 
             if idx < len(eclipses):
                 message += "\n"
