@@ -299,37 +299,37 @@ class EclipseService:
             if eclipse.get('eclipse_category') == 'lunar':
                 # Lunar eclipse formatting
                 message += f"<b>{idx}. 🌙 {eclipse['eclipse_type']} Lunar Eclipse</b>\n"
-                message += f"<b>Date:</b> {eclipse['date_formatted']}\n"
-                message += f"<b>Peak Time (Local):</b> {eclipse['time_formatted']}\n"
-                message += f"<b>Penumbral Magnitude:</b> {eclipse['penumbral_magnitude']}\n"
+                message += f"Date: {eclipse['date_formatted']}\n"
+                message += f"Peak Time (Local): {eclipse['time_formatted']}\n"
+                message += f"Penumbral Magnitude: {eclipse['penumbral_magnitude']}\n"
                 if eclipse['umbral_magnitude'] > 0:
-                    message += f"<b>Umbral Magnitude:</b> {eclipse['umbral_magnitude']}\n"
+                    message += f"Umbral Magnitude: {eclipse['umbral_magnitude']}\n"
 
                 if eclipse['is_visible']:
-                    message += f"<b>Visibility:</b> Visible from your location\n"
-                    message += f"<b>Azimuth (at peak):</b> {eclipse['azimuth']}°\n"
-                    message += f"<b>Altitude (at peak):</b> {eclipse['altitude']}°\n"
+                    message += f"Visibility: Visible from your location\n"
+                    message += f"Azimuth (at peak): {eclipse['azimuth']}°\n"
+                    message += f"Altitude (at peak): {eclipse['altitude']}°\n"
                 else:
-                    message += f"<b>Visibility:</b> Not visible (Moon below horizon)\n"
+                    message += f"Visibility: Not visible (Moon below horizon)\n"
             else:
                 # Solar eclipse formatting
                 eclipse_dt = eclipse['datetime'].astimezone(pytz.utc)
                 message += f"<b>{idx}. ☀️ {eclipse['eclipse_type']} Solar Eclipse</b>\n"
-                message += f"<b>Date:</b> {eclipse_dt.strftime('%B %d, %Y')}\n"
-                message += f"<b>Peak Time (UTC):</b> {eclipse_dt.strftime('%H:%M:%S')}\n"
-                message += f"<b>Eclipse Magnitude:</b> {eclipse['magnitude']}\n"
+                message += f"Date: {eclipse_dt.strftime('%B %d, %Y')}\n"
+                message += f"Peak Time (UTC): {eclipse_dt.strftime('%H:%M:%S')}\n"
+                message += f"Eclipse Magnitude: {eclipse['magnitude']}\n"
 
                 if eclipse['duration']:
-                    message += f"<b>Duration:</b> {eclipse['duration']}\n"
+                    message += f"Duration: {eclipse['duration']}\n"
 
                 if eclipse['path_width']:
-                    message += f"<b>Path Width:</b> {eclipse['path_width']} km\n"
+                    message += f"Path Width: {eclipse['path_width']} km\n"
 
                 if eclipse['lat_dms'] and eclipse['lon_dms']:
-                    message += f"<b>Greatest Eclipse at:</b> {eclipse['lat_dms']}, {eclipse['lon_dms']}\n"
+                    message += f"Greatest Eclipse at: {eclipse['lat_dms']}, {eclipse['lon_dms']}\n"
 
-                message += f"<b>Saros Series:</b> {eclipse['saros']}\n"
-                message += f"<b>Visibility:</b> Unknown\n"
+                message += f"Saros Series: {eclipse['saros']}\n"
+                message += f"Visibility: Unknown\n"
 
             if idx < len(eclipses):
                 message += "\n"

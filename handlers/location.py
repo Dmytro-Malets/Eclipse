@@ -180,7 +180,7 @@ def format_location_confirmation(location_data: Dict[str, Any]) -> str:
 
 <b>Coordinates:</b>
 <b>DMS:</b> {lat_dms}, {lng_dms}
-<b>Decimal:</b> {location_data['latitude']:.4f} (lat), {location_data['longitude']:.4f} (lon)
+<b>Decimal:</b> {location_data['latitude']:.4f}° (lat), {location_data['longitude']:.4f}° (lon)
 
 🌐 <b>Current Time:</b> {time_info['time']} on {time_info['date']} {timezone_display}
 
