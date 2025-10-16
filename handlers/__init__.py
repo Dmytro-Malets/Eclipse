@@ -8,6 +8,7 @@ from .space import register_space_handlers
 from .mars_rover import register_mars_handlers
 from .night_sky import register_night_sky_handlers
 from .eclipse import register_eclipse_handlers
+from .iss import register_iss_handlers
 from .echo import register_echo_handlers
 
 logger = logging.getLogger(__name__)
@@ -21,5 +22,6 @@ def register_all_handlers(dp: Dispatcher):
     register_mars_handlers(dp)
     register_night_sky_handlers(dp)
     register_eclipse_handlers(dp)
+    register_iss_handlers(dp)
     register_echo_handlers(dp) # echo_handler is always last!
     logger.info("✅ All handlers are registered")
