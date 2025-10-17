@@ -278,9 +278,9 @@ class NightSkyService:
             message += f"<b>🪐 Visible Planets ({len(planets)}):</b>\n"
             for planet in planets:
                 message += f"\n<b>{planet['name']}</b>:\n"
-                message += f"• <b>Azimuth:</b> {planet['azimuth']}°\n"
-                message += f"• <b>Altitude:</b> {planet['altitude']}°\n"
-                message += f"• <b>Apparent Magnitude:</b> {planet['magnitude']}\n"
+                message += f"• Azimuth: {planet['azimuth']}°\n"
+                message += f"• Altitude: {planet['altitude']}°\n"
+                message += f"• Apparent Magnitude: {planet['magnitude']}\n"
             message += "\n"
         else:
             message += "<b>🪐 Planets:</b> None currently visible\n\n"
@@ -290,13 +290,13 @@ class NightSkyService:
             message += f"<b>✨ Visible Brightest Stars:</b>\n"
             for star in stars:
                 message += f"\n<b>{star['name']}</b>:\n"
-                message += f"• <b>Azimuth:</b> {star['azimuth']}°\n"
-                message += f"• <b>Altitude:</b> {star['altitude']}°\n"
+                message += f"• Azimuth: {star['azimuth']}°\n"
+                message += f"• Altitude: {star['altitude']}°\n"
                 mag_text = f"{star['magnitude']}"
                 if star.get('is_variable', False):
                     variation = star.get('variation') or '±0.3'
                     mag_text += f" ({variation})"
-                message += f"• <b>Apparent Magnitude:</b> {mag_text}\n"
+                message += f"• Apparent Magnitude: {mag_text}\n"
             message += "\n"
         else:
             message += "<b>✨ Stars:</b> Not visible from current location\n\n"
