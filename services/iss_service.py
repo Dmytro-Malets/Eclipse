@@ -162,15 +162,6 @@ class ISSService:
             else:
                 time_desc = start_dt.strftime('%B %d')
 
-            if max_elevation >= 50:
-                quality = "Excellent"
-            elif max_elevation >= 30:
-                quality = "Good"
-            elif max_elevation >= 10:
-                quality = "Fair"
-            else:
-                quality = "Low"
-
             formatted.append({
                 'risetime': start_dt,
                 'duration': duration,
@@ -180,7 +171,6 @@ class ISSService:
                 'end_azimuth': end_az,
                 'end_direction': end_az_compass,
                 'brightness': mag,
-                'quality': quality,
                 'time_desc': time_desc,
                 'time_formatted': start_dt.strftime('%H:%M:%S')
             })
@@ -235,7 +225,7 @@ class ISSService:
 
                 message += f"<b>{idx}. {pass_info['time_desc']} - {pass_info['time_formatted']}</b>\n"
                 message += f"• Duration: {duration_str}\n"
-                message += f"• Max altitude: {pass_info['max_elevation']:.0f}° ({pass_info['quality']})\n"
+                message += f"• Max altitude: {pass_info['max_elevation']:.0f}°\n"
                 message += f"• Apparent Magnitude: {pass_info['brightness']:.1f}\n"
                 message += f"• Appears: {pass_info['start_direction']} → Disappears: {pass_info['end_direction']}\n"
 
