@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, tzinfo
 from typing import Dict, Any, List
 from database.models import User
 from config.settings import N2YO_API_KEY
+from .location_service import location_service
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,10 @@ class ISSService:
 
             current_position = {} if current_position is None else current_position
 
+            iss_location_name = None
+            if current_position and 'sat_latitude' in current_position:
+                iss_location_name = await self._get_iss_location_name(current_position['sat_latitude'], current_position['sat_longitude'])
+
             formatted_passes = []
             if passes:
                 formatted_passes = self._format_passes(passes, tz)
@@ -42,6 +47,7 @@ class ISSService:
                 'current_time': now.strftime('%H:%M:%S'),
                 'date_formatted': now.strftime('%A, %B %d, %Y'),
                 'current_position': current_position,
+                'iss_location_name': iss_location_name,
                 'passes': formatted_passes
             }
 
@@ -100,6 +106,27 @@ class ISSService:
             return None
         except Exception as e:
             logger.error(f"Error getting ISS current position: {e}")
+            return None
+
+    @staticmethod
+    async def _get_iss_location_name(lat: float, lon: float) -> str | None:
+        try:
+            location_data = await location_service.reverse_geocode(lat, lon)
+
+            if location_data:
+                # Return formatted location string
+                name = location_data['name']
+                country = location_data.get('country', '')
+
+                if country and country != name:
+                    return f"{name}, {country}"
+                return name
+
+            # Fallback for ocean/remote areas
+            return location_service.generate_location_name(lat)
+
+        except Exception as e:
+            logger.error(f"Error getting ISS location name: {e}")
             return None
 
     async def _get_visual_passes(self, lat: float, lon: float, altitude: int = 0, days: int = 3, min_visibility_seconds: int = 0) -> List[Dict[str, Any]] | None:
@@ -215,7 +242,10 @@ class ISSService:
             miles_altitude = km_altitude * 0.621371
 
             message += f"ISS is {km_altitude:.0f} km ({miles_altitude:.0f} miles) above Earth\n"
-            message += f"<b>Coordinates:</b> {pos['sat_latitude']:.2f}° (lat), {pos['sat_longitude']:.2f}° (lon)\n\n"
+            message += f"<b>Coordinates:</b> {pos['sat_latitude']:.2f}° (lat), {pos['sat_longitude']:.2f}° (lon)\n"
+            if iss_data.get('iss_location_name'):
+                message += f"<b>Above:</b> {iss_data['iss_location_name']}\n"
+            message += "\n"
 
         if passes:
             message += f"<b>Next Visible Passes:</b>\n\n"

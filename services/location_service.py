@@ -183,7 +183,7 @@ class LocationService:
             return None
 
     @staticmethod
-    def _generate_location_name(latitude: float) -> str:
+    def generate_location_name(latitude: float) -> str:
         abs_lat = abs(latitude)
         # Polar regions
         if abs_lat > 66.5:
@@ -268,7 +268,7 @@ class LocationService:
             country = location_data.get('country', '')
         else:
             # Fallback for remote/unknown locations
-            name = self._generate_location_name(latitude)
+            name = self.generate_location_name(latitude)
             full_name = f"{name} ({latitude:.4f} lat, {longitude:.4f} lon)"
             country = ''
 
