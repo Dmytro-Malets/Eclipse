@@ -1,7 +1,7 @@
 import logging, pytz
 import numpy as np
 from datetime import datetime, date
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from skyfield.api import load, wgs84, Star
 from skyfield.magnitudelib import planetary_magnitude
 from database.models import User
@@ -28,7 +28,7 @@ class NightSkyService:
             'Neptune': self.eph['neptune barycenter']
         }
 
-    async def get_night_sky_data(self, user: User, target_date: date = None) -> Optional[Dict[str, Any]]:
+    async def get_night_sky_data(self, user: User, target_date: date = None) -> Dict[str, Any] | None:
         if not user.has_location:
             return None
 
@@ -126,7 +126,7 @@ class NightSkyService:
 
         return visible
 
-    def _calculate_planet_magnitude(self, t, planet_body, planet_name: str) -> Optional[float]:
+    def _calculate_planet_magnitude(self, t, planet_body, planet_name: str) -> float | None:
         try:
             astrometric = self.earth.at(t).observe(planet_body)
             magnitude = planetary_magnitude(astrometric)

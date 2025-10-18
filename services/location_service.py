@@ -1,5 +1,5 @@
 import aiohttp, pytz, logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 from .customerror import NoAPIError
 from config.settings import GOOGLE_API_KEY
@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class LocationService:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or GOOGLE_API_KEY
         if not self.api_key:
             raise NoAPIError(
@@ -17,7 +17,7 @@ class LocationService:
         self.geocoding_url = "https://maps.googleapis.com/maps/api/geocode/json"
         self.timezone_url = "https://maps.googleapis.com/maps/api/timezone/json"
 
-    async def geocode_location(self, location_name: str) -> Optional[Dict[str, Any]]:
+    async def geocode_location(self, location_name: str) -> Dict[str, Any] | None:
         params = {
             'address': location_name,
             'key': self.api_key
@@ -77,7 +77,7 @@ class LocationService:
             logger.error(f"Error geocoding location {location_name}: {e}")
             return None
 
-    async def reverse_geocode(self, latitude: float, longitude: float) -> Optional[Dict[str, Any]]:
+    async def reverse_geocode(self, latitude: float, longitude: float) -> Dict[str, Any] | None:
         params = {
             'latlng': f"{latitude},{longitude}",
             'key': self.api_key,
@@ -135,7 +135,7 @@ class LocationService:
             logger.error(f"Error reverse geocoding coordinates {latitude}, {longitude}: {e}")
             return None
 
-    async def get_timezone(self, latitude: float, longitude: float, timestamp: Optional[int] = None) -> Optional[str]:
+    async def get_timezone(self, latitude: float, longitude: float, timestamp: int | None = None) -> str | None:
 
         if timestamp is None:
             timestamp = int(datetime.now().timestamp())
@@ -166,7 +166,7 @@ class LocationService:
             return None
 
     @staticmethod
-    def get_current_time(timezone_str: str) -> Optional[Dict[str, str]]:
+    def get_current_time(timezone_str: str) -> Dict[str, str] | None:
         try:
             tz = pytz.timezone(timezone_str)
             now = datetime.now(tz)
@@ -215,7 +215,7 @@ class LocationService:
         else:
             return f"Etc/GMT+{-offset_hours}"
 
-    async def process_location(self, location_name: str) -> Optional[Dict[str, Any]]:
+    async def process_location(self, location_name: str) -> Dict[str, Any] | None:
 
         # Step 1: Geocode the location
         location_data = await self.geocode_location(location_name)
@@ -244,7 +244,7 @@ class LocationService:
         logger.info(f"📍 Successfully processed location: {location_name} -> {result['name']}")
         return result
 
-    async def process_location_by_coordinates(self, latitude: float, longitude: float) -> Optional[Dict[str, Any]]:
+    async def process_location_by_coordinates(self, latitude: float, longitude: float) -> Dict[str, Any] | None:
 
         # Step 1: Get timezone
         timezone_str = await self.get_timezone(latitude, longitude)

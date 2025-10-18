@@ -1,6 +1,6 @@
 import logging, pytz
 from datetime import datetime, date
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from astral import LocationInfo
 from astral.sun import sun, azimuth, elevation
 from database.models import User
@@ -14,7 +14,7 @@ class SunService:
         self.uv_service = UVService()
 
     @staticmethod
-    def create_location_info(user: User) -> Optional[LocationInfo]:
+    def create_location_info(user: User) -> LocationInfo | None:
         if not user.has_location:
             return None
 
@@ -31,7 +31,7 @@ class SunService:
             logger.error(f"Error creating LocationInfo for user {user.user_id}: {e}")
             return None
 
-    async def get_sun_times(self, user: User, target_date: date = None) -> Optional[Dict[str, Any]]:
+    async def get_sun_times(self, user: User, target_date: date = None) -> Dict[str, Any] | None:
         location = self.create_location_info(user)
         if not location:
             return None

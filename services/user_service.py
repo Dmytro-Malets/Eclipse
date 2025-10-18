@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from sqlalchemy import select, update
 from aiogram.types import User as TelegramUser
 import logging
@@ -7,7 +7,7 @@ from database.models import User
 
 logger = logging.getLogger(__name__)
 
-async def get_user(user_id: int) -> Optional[User]:
+async def get_user(user_id: int) -> User | None:
     async with get_db() as session:
         result = await session.execute(select(User).where(User.user_id == user_id))
         return result.scalar_one_or_none()

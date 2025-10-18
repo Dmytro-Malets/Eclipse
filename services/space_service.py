@@ -1,6 +1,6 @@
 import aiohttp, logging, pytz
 from datetime import datetime, date
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from config.settings import NASA_API_KEY
 from .customerror import NoAPIError
 from database.models import User
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class NASAAstronomyService:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or NASA_API_KEY
         if not self.api_key:
             raise NoAPIError(
@@ -22,7 +22,7 @@ class NASAAstronomyService:
             'neo': f"{self.base_url}/neo/rest/v1/feed",  # Near Earth Objects
         }
 
-    async def get_space_data(self, user: User = None) -> Optional[List[Dict[str, Any]]]:
+    async def get_space_data(self, user: User = None) -> List[Dict[str, Any]] | None:
         target_date = self._get_user_date(user) if user and user.has_location else date.today()
         space_data = []
 
@@ -46,7 +46,7 @@ class NASAAstronomyService:
 
         return space_data if space_data else None
 
-    async def _get_apod(self, target_date: date) -> Optional[Dict[str, Any]]:
+    async def _get_apod(self, target_date: date) -> Dict[str, Any] | None:
         params = {
             'api_key': self.api_key,
             'date': target_date.isoformat(),
@@ -75,7 +75,7 @@ class NASAAstronomyService:
 
         return None
 
-    async def _get_near_earth_objects(self, target_date: date) -> Optional[Dict[str, Any]]:
+    async def _get_near_earth_objects(self, target_date: date) -> Dict[str, Any] | None:
         params = {
             'api_key': self.api_key,
             'start_date': target_date.isoformat(),

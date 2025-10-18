@@ -1,6 +1,6 @@
 import redis.asyncio as redis
 import json, logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from config.settings import REDIS_URL
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,7 @@ class RedisService:
             logger.error(f"❌ Error storing temp location: {e}")
             raise
 
-    async def get_temp_location(self, user_id: int) -> Optional[Dict[str, Any]]:
+    async def get_temp_location(self, user_id: int) -> Dict[str, Any] | None:
         try:
             key = f"temp_location:{user_id}"
             value = await self.redis.get(key)
@@ -70,7 +70,7 @@ class RedisService:
         except Exception as e:
             logger.error(f"❌ Error storing moon messages: {e}")
 
-    async def get_moon_photo_message(self, user_id: int, chat_id: int) -> Optional[Dict[str, int]]:
+    async def get_moon_photo_message(self, user_id: int, chat_id: int) -> Dict[str, int] | None:
         try:
             key = f"moon_messages:{user_id}:{chat_id}"
             value = await self.redis.get(key)

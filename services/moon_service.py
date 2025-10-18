@@ -4,7 +4,7 @@ import matplotlib.patches as patches
 import matplotlib.transforms as transforms
 import numpy as np
 from datetime import datetime, date, time, timedelta
-from typing import Dict, Any, Optional, BinaryIO
+from typing import Dict, Any, BinaryIO
 from skyfield.api import load, wgs84, utc
 from skyfield import almanac
 from database.models import User
@@ -21,7 +21,7 @@ class MoonService:
         self.moon = self.eph['moon']
         self.sun = self.eph['sun']
 
-    async def get_moon_data(self, user: User, target_date: date = None, target_time: time = None) -> Optional[Dict[str, Any]]:
+    async def get_moon_data(self, user: User, target_date: date = None, target_time: time = None) -> Dict[str, Any] | None:
         if not user.has_location:
             return None
 

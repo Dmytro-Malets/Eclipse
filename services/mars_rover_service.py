@@ -1,5 +1,5 @@
 import aiohttp, logging, random
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 from config.settings import NASA_API_KEY
 from .customerror import NoAPIError
 
@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class MarsRoverService:
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or NASA_API_KEY
         if not self.api_key:
             raise NoAPIError(
@@ -52,7 +52,7 @@ class MarsRoverService:
             'NAV': 'Navigation Camera'
         }
 
-    async def get_rover_latest_photos(self, rover_name: str, max_photos: int = 10) -> Optional[Dict[str, Any]]:
+    async def get_rover_latest_photos(self, rover_name: str, max_photos: int = 10) -> Dict[str, Any] | None:
         rover_key = rover_name.lower()
 
         if rover_key not in self.preferred_cameras:

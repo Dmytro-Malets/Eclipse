@@ -1,6 +1,6 @@
 import aiohttp, logging, pytz
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from database.models import User
 
 logger = logging.getLogger(__name__)
@@ -10,7 +10,7 @@ class UVService:
     def __init__(self):
         self.base_url = "https://api.open-meteo.com/v1/forecast"
 
-    async def get_uv_index(self, user: User) -> Optional[Dict[str, Any]]:
+    async def get_uv_index(self, user: User) -> Dict[str, Any] | None:
 
         if not user.has_location:
             return None
