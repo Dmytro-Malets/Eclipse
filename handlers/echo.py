@@ -15,6 +15,7 @@ async def echo_handler(message: Message, user: User):
 /space - NASA Picture of the Day & NEO
 /eclipse - Upcoming lunar & solar eclipses
 /iss - ISS tracking & passes
+/spaceweather - Space weather report
 /rovers - Mars rover photo gallery
 /perseverance - Perseverance rover photos
 /curiosity - Curiosity rover photos

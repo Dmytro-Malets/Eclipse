@@ -17,6 +17,7 @@ Welcome, {user_name}
 🔭 Night sky objects
 🪐 NASA space news
 📸 Mars rover photos
+⚡ Aurora & geomagnetic activity
 
 <b>Quick Start:</b>
 /help - Show available commands
@@ -41,6 +42,7 @@ async def cmd_help(message: Message, user: User):
 /space - NASA Picture of the Day & NEO
 /eclipse - Upcoming lunar & solar eclipses
 /iss - ISS tracking & passes
+/spaceweather - Space weather report
 /rovers - Mars rover photo gallery
 /perseverance - Perseverance rover photos
 /curiosity - Curiosity rover photos
