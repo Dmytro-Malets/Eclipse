@@ -15,7 +15,9 @@ Welcome, {user_name}
 🌙 Moon phases & position
 ☀️ Sun times & UV index
 🔭 Night sky objects
+🌑 Lunar & solar eclipses
 🪐 NASA space news
+🛰 ISS tracking & passes
 📸 Mars rover photos
 ⚡ Aurora & geomagnetic activity
 
@@ -36,8 +38,8 @@ async def cmd_help(message: Message, user: User):
 /start - Start the bot
 /help - Show this message
 /location <i>place</i> - Set your location
-/moon - Moon information
-/sun - Sun information
+/moon - Moon phase & position
+/sun - Sun times & UV index
 /sky - Visible planets & stars
 /space - NASA Picture of the Day & NEO
 /eclipse - Upcoming lunar & solar eclipses

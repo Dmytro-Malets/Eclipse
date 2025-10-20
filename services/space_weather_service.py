@@ -472,19 +472,21 @@ class SpaceWeatherService:
     @staticmethod
     def _get_cloud_multiplier(cloud_cover_percent: int | None) -> float:
         if cloud_cover_percent is None:
+            return 0.8
+        if cloud_cover_percent <= 5:
             return 1.0
-        if cloud_cover_percent <= 10:
-            return 1.0
-        if cloud_cover_percent <= 25:
+        elif cloud_cover_percent <= 15:
             return 0.9
-        if cloud_cover_percent <= 50:
-            return 0.7
-        if cloud_cover_percent <= 75:
-            return 0.4
-        if cloud_cover_percent <= 90:
-            return 0.2
-
-        return 0.05
+        elif cloud_cover_percent <= 30:
+            return 0.75
+        elif cloud_cover_percent <= 50:
+            return 0.55
+        elif cloud_cover_percent <= 70:
+            return 0.30
+        elif cloud_cover_percent <= 85:
+            return 0.14
+        else:
+            return 0.035
 
     @staticmethod
     def _interpret_ovation_probability(prob: int) -> str:

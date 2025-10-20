@@ -496,14 +496,14 @@ class MoonService:
 
         message += f"<b>Distance from you:</b>\n"
         message += f"• {distance['km']:,.0f} km\n"
-        message += f"• {distance['miles']:,.0f} miles\n\n"
+        message += f"• {distance['miles']:,.0f} miles"
 
         if moon_data['current_position']:
             pos = moon_data['current_position']
-            message += f"<b>Current Moon Position:</b>\n"
+            message += f"\n\n<b>Current Moon Position:</b>\n"
             message += f"• <b>Azimuth:</b> {pos['azimuth']}°\n"
             message += f"• <b>Altitude:</b> {pos['altitude']}°\n"
-            message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}\n"
+            message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}"
 
         return message
 

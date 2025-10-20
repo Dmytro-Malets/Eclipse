@@ -9,8 +9,8 @@ async def echo_handler(message: Message, user: User):
 /start - Start the bot
 /help - Show this message
 /location <i>place</i> - Set your location
-/moon - Moon information
-/sun - Sun information
+/moon - Moon phase & position
+/sun - Sun times & UV index
 /sky - Visible planets & stars
 /space - NASA Picture of the Day & NEO
 /eclipse - Upcoming lunar & solar eclipses

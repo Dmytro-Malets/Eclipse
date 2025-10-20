@@ -190,7 +190,7 @@ class MarsRoverService:
         rover_name_lower = rover_info.get('name', '').lower()
 
         message = f"<b>{rover_info['name']} Mars Rover</b>\n\n"
-        message += f"<b>Sol:</b> {rover_data['sol']} (Martian day)\n"
+        message += f"<b>Sol:</b> {rover_data['sol']}\n"
         message += f"<b>Photos sent:</b> {rover_data['photos_returned']}\n"
         message += f"<b>Total available:</b> {rover_data['total_photos_available']}\n\n"
 

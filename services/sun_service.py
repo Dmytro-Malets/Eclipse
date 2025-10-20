@@ -152,10 +152,10 @@ class SunService:
         message += f"🌅 <b>Sunrise:</b> {sun_data['sunrise']}\n"
         message += f"🌇 <b>Sunset:</b> {sun_data['sunset']}\n"
         message += f"☀️ <b>Solar Noon:</b> {sun_data['solar_noon']}\n"
-        message += f"⏱ <b>Day Length:</b> {sun_data['day_length']}\n\n"
+        message += f"⏱ <b>Day Length:</b> {sun_data['day_length']}"
 
         if sun_data['current_time']:
-            message += f"{sun_data['sun_status']}\n\n"
+            message += f"\n\n{sun_data['sun_status']}\n\n"
 
             if 'uv_data' in sun_data and sun_data['uv_data'] is not None:
                 uv = sun_data['uv_data']
@@ -166,7 +166,7 @@ class SunService:
                 message += f"<b>Current Sun Position:</b>\n"
                 message += f"• <b>Azimuth:</b> {pos['azimuth']}°\n"
                 message += f"• <b>Altitude:</b> {pos['elevation']}°\n"
-                message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}\n"
+                message += f"• <b>Status:</b> {'Above horizon' if pos['is_up'] else 'Below horizon'}"
 
         return message
 

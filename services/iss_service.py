@@ -257,10 +257,10 @@ class ISSService:
                 message += f"• Duration: {duration_str}\n"
                 message += f"• Max altitude: {pass_info['max_elevation']:.0f}°\n"
                 message += f"• Apparent Magnitude: {pass_info['brightness']:.1f}\n"
-                message += f"• Appears: {pass_info['start_direction']} → Disappears: {pass_info['end_direction']}\n"
+                message += f"• Appears: {pass_info['start_direction']} → Disappears: {pass_info['end_direction']}"
 
                 if idx < len(passes):
-                    message += "\n"
+                    message += "\n\n"
         else:
             message += "<b>No visible passes in the next 3 days</b>"
 

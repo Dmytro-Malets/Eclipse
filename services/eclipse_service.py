@@ -308,9 +308,9 @@ class EclipseService:
                 if eclipse['is_visible']:
                     message += f"Visibility: Visible from your location\n"
                     message += f"Azimuth (at peak): {eclipse['azimuth']}°\n"
-                    message += f"Altitude (at peak): {eclipse['altitude']}°\n"
+                    message += f"Altitude (at peak): {eclipse['altitude']}°"
                 else:
-                    message += f"Visibility: Not visible (Moon below horizon)\n"
+                    message += f"Visibility: Not visible (Moon below horizon)"
             else:
                 # Solar eclipse formatting
                 eclipse_dt = eclipse['datetime'].astimezone(pytz.utc)
@@ -329,10 +329,10 @@ class EclipseService:
                     message += f"Greatest Eclipse at: {eclipse['lat_dms']}, {eclipse['lon_dms']}\n"
 
                 message += f"Saros Series: {eclipse['saros']}\n"
-                message += f"Visibility: Unknown\n"
+                message += f"Visibility: Unknown"
 
             if idx < len(eclipses):
-                message += "\n"
+                message += "\n\n"
 
         return message
 
