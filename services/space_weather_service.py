@@ -371,9 +371,6 @@ class SpaceWeatherService:
 
                         visibility_str = self._interpret_ovation_probability(final_prob)
 
-                        if cloud_cover_percent is not None and cloud_cover_percent > 85:
-                            visibility_str = f"Obscured by Overcast (Raw Activity: {raw_ovation_prob}%)"
-
                     cloud_status = f"{cloud_cover_percent}%" if cloud_cover_percent is not None else "Unknown"
 
                     return {
@@ -499,6 +496,8 @@ class SpaceWeatherService:
             return "Moderate"
         elif prob >= 10:
             return "Low"
+        elif prob >= 1:
+            return "Minimal"
         else:
             return "Not visible"
 
@@ -543,17 +542,18 @@ class SpaceWeatherService:
         # Aurora Visibility
         aurora_data = weather_data.get('aurora')
         if aurora_data:
-            message += f"<b>Aurora Forecast ({aurora_data['hemisphere']} Hemisphere):</b>\n"
+            message += f"<b>Aurora Forecast:</b>\n"
+            message += f"Hemisphere: {aurora_data['hemisphere']}\n"
 
             if not aurora_data['is_night']:
                 message += "Visibility: Not visible (Daytime)\n"
-                message += f"Forecast for tonight (if clear): {aurora_data['raw_ovation_prob']}%\n\n"
+                message += f"Expected forecast tonight: {aurora_data['raw_ovation_prob']}%"
             else:
                 message += f"Visibility: {aurora_data['visibility']}\n"
-                message += f"Probability: {aurora_data['probability_percent']}%\n"
-                message += f"Cloud Cover: {aurora_data['cloud_cover']}\n\n"
+                message += f"Cloud Cover: {aurora_data['cloud_cover']}\n"
+                message += f"Viewing Chance: {aurora_data['probability_percent']}%"
         elif aurora_data is None:
-            message += "<b>Aurora Forecast:</b> Unable to load forecast\n\n"
+            message += "<b>Aurora Forecast:</b> Unable to load forecast"
 
         return message
 
