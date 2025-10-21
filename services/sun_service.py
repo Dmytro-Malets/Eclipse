@@ -178,5 +178,5 @@ def get_user_today(user: User) -> date:
         tz = pytz.timezone(user.timezone)
         now = datetime.now(tz)
         return now.date()
-    except Exception:
+    except (pytz.exceptions.UnknownTimeZoneError, ValueError, AttributeError):
         return date.today()

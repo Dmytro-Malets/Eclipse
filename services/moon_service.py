@@ -34,7 +34,7 @@ class MoonService:
                 target_date = user_today
 
             meridian_time = None
-            # If time is not specified
+            # Determine target time: current for today, meridian transit for other days
             if target_time is None:
                 if target_date == user_today:
                     # For today - use current time
@@ -45,7 +45,7 @@ class MoonService:
                     if meridian_time:
                         target_time = meridian_time
                     else:
-                        # Fallback to noon if calculation fails
+                        # Fallback to 10 PM if calculation fails
                         target_time = time(22, 0)
 
             # Create a datetime taking into account the user's time zone
@@ -56,6 +56,9 @@ class MoonService:
 
             # Get moon phase
             moon_phase = self._calculate_moon_phase(target_datetime)
+
+            # Find the exact moments of the main phases on this day
+            major_phase_info = self._find_major_phase_on_date(target_date, tz)
 
             # Get current moon position
             current_position = None
@@ -89,6 +92,7 @@ class MoonService:
                 'date_formatted': target_date.strftime('%A, %B %d, %Y'),
                 'current_time': now.strftime('%H:%M:%S') if target_date == user_today else None,
                 'moon_phase': moon_phase,
+                'major_phase_info': major_phase_info,
                 'current_position': current_position,
                 'distance': distance,
                 'magnitude': magnitude,
@@ -195,6 +199,45 @@ class MoonService:
 
         return np.arccos(cos_angle)
 
+    def _find_major_phase_on_date(self, target_date: date, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, Any] | None:
+        try:
+            # Get 24-hour time range for the target date
+            start_datetime_local = tz.localize(datetime.combine(target_date, time(0, 0)))
+            end_datetime_local = start_datetime_local + timedelta(days=1)
+
+            # Convert to skyfield time directly from UTC-converted date times
+            t0 = self.ts.from_datetime(start_datetime_local.astimezone(utc))
+            t1 = self.ts.from_datetime(end_datetime_local.astimezone(utc))
+
+            # Find all moon phases within this 24-hour period
+            times, phases = almanac.find_discrete(t0, t1, almanac.moon_phases(self.eph))
+
+            if len(times) > 0:
+                # Get the first phase occurrence in this day
+                phase_time_utc = times[0].utc_datetime()
+                # Convert back to user's local timezone
+                phase_time_local = phase_time_utc.replace(tzinfo=utc).astimezone(tz)
+                phase_code = int(phases[0])
+
+                # Map phase codes to display names
+                phase_names = {
+                    0: "🌑 New Moon",
+                    1: "🌓 First Quarter",
+                    2: "🌕 Full Moon",
+                    3: "🌗 Third Quarter"
+                }
+
+                return {
+                    'phase_name': phase_names.get(phase_code, "Unknown"),
+                    'time': phase_time_local.strftime('%H:%M:%S')
+                }
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error finding major phase on date: {e}")
+            return None
+
     def _calculate_moon_age(self, t) -> float | None:
         try:
             # Finding the last new moon
@@ -227,13 +270,13 @@ class MoonService:
     @staticmethod
     def _get_phase_name(illumination: float, is_waxing: bool) -> str:
 
-        if illumination < 1:
+        if illumination < 0.1:
             return "🌑 New Moon" if is_waxing else "🌘 Waning Crescent"
         elif illumination < 49:
             return "🌒 Waxing Crescent" if is_waxing else "🌘 Waning Crescent"
         elif 49 <= illumination <= 51:
             return "🌓 First Quarter" if is_waxing else "🌗 Third Quarter"
-        elif illumination < 99.5:
+        elif illumination < 99.9:
             return "🌔 Waxing Gibbous" if is_waxing else "🌖 Waning Gibbous"
         else:
             return "🌕 Full Moon"
@@ -475,6 +518,7 @@ class MoonService:
         location_info = moon_data['location']
         phase = moon_data['moon_phase']
         distance = moon_data['distance']
+        major_phase = moon_data.get('major_phase_info')
 
         message = f"<b>{location_info['city']}. {moon_data['date_formatted']}</b>\n"
 
@@ -484,6 +528,9 @@ class MoonService:
             message += f"\n<b>Data for Meridian Transit:</b> {moon_data['time']}\n\n"
         else:
             message += f"\n<b>Data for:</b> {moon_data['time']}\n\n"
+
+        if major_phase:
+            message += f"<b>{major_phase['phase_name']} at {major_phase['time']}</b>\n\n"
 
         message += f"<b>Moon Phase:</b> {phase['phase_name']}\n"
         message += f"<b>Illumination:</b> {phase['illumination']}%\n"
@@ -514,5 +561,5 @@ def get_user_today(user: User) -> date:
         tz = pytz.timezone(user.timezone)
         now = datetime.now(tz)
         return now.date()
-    except Exception:
+    except (pytz.exceptions.UnknownTimeZoneError, ValueError, AttributeError):
         return date.today()
