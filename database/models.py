@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 class Base(AsyncAttrs, DeclarativeBase):
-    """Base class for all models"""
+    # Base class for all models
     pass
 
 

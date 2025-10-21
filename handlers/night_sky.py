@@ -146,7 +146,6 @@ async def night_sky_date_callback(callback: CallbackQuery, user: User):
         await callback.answer("❌ Error occurred", show_alert=True)
 
 async def night_sky_noop_callback(callback: CallbackQuery):
-    """Handle no-operation callbacks"""
     await callback.answer()
 
 def register_night_sky_handlers(dp: Dispatcher):

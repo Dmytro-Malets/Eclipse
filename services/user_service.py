@@ -24,7 +24,7 @@ async def create_user(telegram_user: TelegramUser) -> User:
         session.add(user)
         await session.flush()  # To get ID
 
-        logger.info(f"👤 New user: {user.full_name} (ID: {user.user_id})")
+        logger.info(f"👤 New user: {user.mention} (ID: {user.user_id})")
         return user
 
 async def get_or_create_user(telegram_user: TelegramUser) -> User:

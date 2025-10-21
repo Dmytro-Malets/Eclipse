@@ -291,7 +291,7 @@ class LocationService:
 location_service = LocationService()
 
 def decimal_to_dms(decimal_deg: float, is_longitude: bool = False) -> str:
-    """Convert decimal degrees to degrees, minutes, seconds format"""
+    # Convert decimal degrees to degrees, minutes, seconds format
     abs_deg = abs(decimal_deg)
     degrees = int(abs_deg)
     minutes = int((abs_deg - degrees) * 60)
@@ -305,7 +305,7 @@ def decimal_to_dms(decimal_deg: float, is_longitude: bool = False) -> str:
     return f"{degrees}°{minutes}'{seconds:.1f}\"{direction}"
 
 def format_utc_offset(offset_str: str) -> str:
-    """Convert +0300 format to GMT+3 format"""
+    # Convert +0300 format to GMT+3 format
     if not offset_str or len(offset_str) != 5:
         return offset_str
 

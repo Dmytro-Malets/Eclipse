@@ -147,7 +147,6 @@ async def sun_date_callback(callback: CallbackQuery, user: User):
         await callback.answer("❌ Error occurred", show_alert=True)
 
 async def sun_noop_callback(callback: CallbackQuery):
-    """Handle no-operation callbacks (current date button)"""
     await callback.answer()
 
 def register_sun_handlers(dp: Dispatcher):

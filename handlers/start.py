@@ -58,8 +58,7 @@ async def cmd_help(message: Message, user: User):
 async def set_commands(bot: Bot):
     commands = [
         BotCommand(command="start", description="Start the bot"),
-        BotCommand(command="help", description="Show available commands"),
-        BotCommand(command="location", description="Set your location")
+        BotCommand(command="help", description="Show available commands")
     ]
     await bot.set_my_commands(commands)
 
