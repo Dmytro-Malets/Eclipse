@@ -145,14 +145,13 @@ class MoonService:
             # Convert to UTC for skyfield
             target_utc = target_datetime.astimezone(utc)
             t = self.ts.from_datetime(target_utc)
-            # One minute later
-            t_plus_minute = self.ts.from_datetime(t.utc_datetime() + timedelta(minutes=1))
 
+            # Calculate geocentric phase angle (the Sun-Earth-Moon angle)
             phase_angle_rad = self._get_phase_angle_at_time(t)
 
-            phase_angle_later_rad = self._get_phase_angle_at_time(t_plus_minute)
-
-            is_waxing = phase_angle_later_rad > phase_angle_rad
+            # Get ecliptic longitude angle. This determines the waxing/waning phase based on Moon's position in orbit
+            longitude_phase_angle = almanac.moon_phase(self.eph, t)
+            is_waxing = longitude_phase_angle.degrees < 180.0
 
             # When angle = 0° (sun and moon in the same direction) = New Moon = 0% illumination
             # When angle = 180° (opposite directions) = Full Moon = 100% illumination
