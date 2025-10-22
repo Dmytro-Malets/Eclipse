@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 from skyfield.api import load, wgs84, Star
 from skyfield.magnitudelib import planetary_magnitude
 from database.models import User
+from .weather_api_service import weather_api_service
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,9 @@ class NightSkyService:
             # Get the brightest stars
             brightest_stars = self._get_brightest_stars(observer, t)
 
+            # Get weather data (cloud cover)
+            weather_data = await weather_api_service.get_current_weather(user)
+
             result = {
                 'location': {
                     'city': user.city,
@@ -79,7 +83,8 @@ class NightSkyService:
                 'moon': moon_data,
                 'planets': visible_planets,
                 'stars': brightest_stars,
-                'sky_condition': self._get_sky_condition(sun_data['altitude'])
+                'sky_condition': self._get_sky_condition(sun_data['altitude']),
+                'cloud_cover': weather_data.get('cloud_cover') if weather_data else None
             }
 
             return result
@@ -140,7 +145,7 @@ class NightSkyService:
             return None
 
     @staticmethod
-    def _get_brightest_stars(observer, t, limit: int = 5) -> List[Dict[str, Any]]:
+    def _get_brightest_stars(observer, t, limit: int = 8) -> List[Dict[str, Any]]:
         try:
             notable_stars = [
                 {'name': 'Sirius', 'ra_hours': 6.7525, 'dec_degrees': -16.7161, 'magnitude': -1.46},
@@ -255,6 +260,7 @@ class NightSkyService:
     def format_night_sky_message(sky_data: Dict[str, Any]) -> str:
         location_info = sky_data['location']
         sky_condition = sky_data['sky_condition']
+        cloud_cover = sky_data['cloud_cover']
 
         message = f"<b>{location_info['city']}. {sky_data['date_formatted']}</b>\n"
 
@@ -272,6 +278,9 @@ class NightSkyService:
 
         message += f"<b>Sun:</b> {'Above horizon' if sun['is_visible'] else 'Below horizon'}\n"
         message += f"<b>Moon:</b> {'Above horizon' if moon['is_visible'] else 'Below horizon'}\n\n"
+
+        if cloud_cover is not None:
+            message += f"<b>☁️ Cloud Cover:</b> {cloud_cover}%\n\n"
 
         planets = sky_data['planets']
         if planets:
@@ -303,11 +312,10 @@ class NightSkyService:
 
         # Viewing tips
         if sky_data['is_night']:
-            message += "<i>💡 Find a dark location away from city lights for best viewing.</i>"
+            message += "<i>💡 Find a dark location away from city lights for best viewing</i>"
         else:
-            message += "<i>💡 Wait for nighttime for optimal stargazing conditions.</i>"
+            message += "<i>💡 Wait for nighttime for optimal stargazing conditions</i>"
 
-        message += "\n<i>☁️ Clear skies are essential - check your local weather forecast.</i>"
         return message
 
 

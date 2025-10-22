@@ -3,7 +3,7 @@ from datetime import datetime, tzinfo, timezone
 from typing import Dict, Any
 from astral import sun, LocationInfo
 from database.models import User
-from config.settings import WEATHER_API_KEY
+from .weather_api_service import weather_api_service
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 class SpaceWeatherService:
     def __init__(self):
         self.noaa_url = "https://services.swpc.noaa.gov"
-        self.weather_url = "https://api.openweathermap.org/data/2.5/weather"
 
         self.endpoints = {
             'kp_index': f"{self.noaa_url}/products/noaa-planetary-k-index.json",
@@ -19,8 +18,6 @@ class SpaceWeatherService:
             'solar_flares': f"{self.noaa_url}/json/goes/primary/xrays-7-day.json",
             'ovation_json': f"{self.noaa_url}/json/ovation_aurora_latest.json"
         }
-
-        self.weather_api_key = WEATHER_API_KEY
 
     async def get_space_weather(self, user: User) -> Dict[str, Any] | None:
         if not user.has_location:
@@ -34,7 +31,7 @@ class SpaceWeatherService:
             kp_data = await self._get_kp_index(tz)
             geomag_data = await self._get_geomagnetic_storms(tz)
             flare_data = await self._get_solar_flares(tz)
-            weather_conditions = await self._get_current_weather(user)
+            weather_conditions = await weather_api_service.get_current_weather(user)
             aurora_data = await self._get_ovation_forecast(user, tz, weather_conditions)
 
             result = {
@@ -384,40 +381,6 @@ class SpaceWeatherService:
 
         except Exception as e:
             logger.error(f"Error fetching OVATION forecast: {e}")
-            return None
-
-    async def _get_current_weather(self, user: User) -> Dict[str, Any] | None:
-        if not self.weather_api_key:
-            return None
-
-        params = {
-            'lat': user.latitude,
-            'lon': user.longitude,
-            'appid': self.weather_api_key,
-            'units': 'metric'
-        }
-        url = self.weather_url
-
-        try:
-            timeout = aiohttp.ClientTimeout(total=5)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(url, params=params) as response:
-                    if response.status != 200:
-                        logger.error(f"OpenWeatherMap API error: {response.status} {await response.text()}")
-                        return None
-
-                    data = await response.json()
-
-                    cloud_cover = data.get('clouds', {}).get('all')
-
-                    if cloud_cover is not None:
-                        return {'cloud_cover': cloud_cover}
-                    else:
-                        logger.warning("Cloud data not found in OpenWeatherMap response.")
-                        return None
-
-        except Exception as e:
-            logger.error(f"Error fetching OpenWeatherMap data: {e}")
             return None
 
     @staticmethod
