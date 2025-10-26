@@ -61,9 +61,7 @@ class MoonService:
             major_phase_info = self._find_major_phase_on_date(target_date, tz)
 
             # Get current moon position
-            current_position = None
-            if target_date == user_today:
-                current_position = self._get_moon_position(observer, target_datetime)
+            moon_pos_data = self._get_moon_position(observer, target_datetime)
 
             # Get moon distance
             distance = self._get_moon_distance(observer, target_datetime)
@@ -71,16 +69,27 @@ class MoonService:
             # Calculate moon's apparent magnitude
             magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
 
-            # Calculate Position Angle of the Moon's Bright Limb
-            pa_bright_limb = self._calculate_bright_limb_position_angle(target_datetime)
+            # Get Moon's altitude to determine the best method for zenith angle calculation
+            moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
 
-            # Calculate Parallactic Angle
-            parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
+            if moon_altitude > 70.0:
+                # High Altitude: Use the stable Alt/Az horizontal coordinate method
+                moon_zenith_angle = self._calculate_zenith_angle_of_bright_limb(observer, target_datetime)
+            else:
+                # Low/Moderate Altitude: Use the precise RA/Dec equatorial coordinate method
+                # Calculate Position Angle of the Moon's Bright Limb
+                pa_bright_limb = self._calculate_bright_limb_position_angle(target_datetime)
 
-            moon_zenith_angle = pa_bright_limb - parallactic_angle
+                # Calculate Parallactic Angle
+                parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
+
+                moon_zenith_angle = pa_bright_limb - parallactic_angle
 
             # Generate moon phase image
             moon_image = self._generate_moon_image(moon_phase['illumination'], moon_zenith_angle)
+
+            # Assign the pre-calculated position data only if the target date is today
+            current_position = moon_pos_data if target_date == user_today else None
 
             result = {
                 'location': {
@@ -354,6 +363,47 @@ class MoonService:
         except Exception as e:
             logger.error(f"Error calculating moon magnitude: {e}")
             return -12.74
+
+    def _calculate_zenith_angle_of_bright_limb(self, observer, target_datetime: datetime) -> float:
+        try:
+            target_utc = target_datetime.astimezone(utc)
+            t = self.ts.from_datetime(target_utc)
+
+            # Get horizontal coordinates (Alt/Az) for the Moon
+            moon_obs = observer.at(t).observe(self.moon).apparent()
+            alt_moon, az_moon, _ = moon_obs.altaz()
+
+            # Get horizontal coordinates (Alt/Az) for the Sun
+            sun_obs = observer.at(t).observe(self.sun).apparent()
+            alt_sun, az_sun, _ = sun_obs.altaz()
+
+            # Convert to radians
+            alt_moon_rad = alt_moon.radians
+            az_moon_rad = az_moon.radians
+            alt_sun_rad = alt_sun.radians
+            az_sun_rad = az_sun.radians
+
+            # Calculate the Sun's position angle relative to the Moon's zenith-direction.
+            # This is analogous to the standard RA/Dec position angle formula,
+            # but computed in the horizontal (Alt/Az) coordinate frame.
+            y = np.cos(alt_sun_rad) * np.sin(az_moon_rad - az_sun_rad)
+            x = np.cos(alt_moon_rad) * np.sin(alt_sun_rad) - \
+                np.sin(alt_moon_rad) * np.cos(alt_sun_rad) * np.cos(az_moon_rad - az_sun_rad)
+
+            position_angle_rad = np.arctan2(y, x)
+            pa_sun_deg = np.degrees(position_angle_rad)  # Angle from zenith to the Sun
+
+            # The bright limb is 90 degrees from the Sun's direction
+            bright_limb_angle_deg = pa_sun_deg + 90.0
+
+            # Normalize to [0, 360) range to match API conventions
+            final_angle = bright_limb_angle_deg % 360
+
+            return final_angle
+
+        except Exception as e:
+            logger.error(f"Error calculating zenith angle of bright limb: {e}", exc_info=True)
+            return 0.0
 
     def _calculate_bright_limb_position_angle(self, target_datetime: datetime) -> float:
         try:
