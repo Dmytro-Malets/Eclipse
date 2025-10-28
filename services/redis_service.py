@@ -89,5 +89,28 @@ class RedisService:
         except Exception as e:
             logger.error(f"❌ Error deleting moon messages: {e}")
 
+    async def set_iss_messages(self, user_id: int, chat_id: int, location_message_id: int, text_message_id: int):
+        try:
+            key = f"iss_messages:{user_id}:{chat_id}"
+            value = json.dumps({
+                "location_message_id": location_message_id,
+                "text_message_id": text_message_id
+            })
+            await self.redis.set(key, value)
+            logger.info(f"📦 Stored ISS messages for user {user_id} in chat {chat_id}")
+        except Exception as e:
+            logger.error(f"❌ Error storing ISS messages: {e}")
+
+    async def get_iss_messages(self, user_id: int, chat_id: int) -> Dict[str, int] | None:
+        try:
+            key = f"iss_messages:{user_id}:{chat_id}"
+            value = await self.redis.get(key)
+            if value:
+                return json.loads(value)
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error getting ISS messages: {e}")
+            return None
+
 
 redis_service = RedisService()
