@@ -42,7 +42,7 @@ async def cmd_help(message: Message, user: User):
 /sun - Sun times & UV index
 /sky - Visible planets & stars
 /space - NASA Picture of the Day & NEO
-/eclipse - Upcoming lunar & solar eclipses
+/eclipses - Upcoming lunar & solar eclipses
 /iss - ISS tracking & passes
 /spaceweather - Space weather report
 /rovers - Mars rover photo gallery

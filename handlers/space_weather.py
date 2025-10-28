@@ -8,6 +8,12 @@ from services.space_weather_service import space_weather_service
 logger = logging.getLogger(__name__)
 
 async def cmd_spaceweather(message: Message, user: User):
+    await show_space_weather(message, user)
+
+async def btn_spaceweather(message: Message, user: User):
+    await show_space_weather(message, user)
+
+async def show_space_weather(message: Message, user: User):
     if not user.has_location:
         await message.answer(
             "❌ <b>Location not registered!</b>\n\n"
@@ -16,9 +22,6 @@ async def cmd_spaceweather(message: Message, user: User):
         )
         return
 
-    await show_space_weather(message, user)
-
-async def show_space_weather(message: Message, user: User):
     processing_msg = await message.answer("Loading space weather data...")
 
     try:
@@ -97,4 +100,5 @@ async def spaceweather_refresh_callback(callback: CallbackQuery, user: User):
 
 def register_space_weather_handlers(dp: Dispatcher):
     dp.message.register(cmd_spaceweather, Command("spaceweather"))
+    dp.message.register(btn_spaceweather, F.text == "⚡ Space Weather")
     dp.callback_query.register(spaceweather_refresh_callback, F.data.startswith("spaceweather_refresh:"))
