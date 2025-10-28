@@ -6,7 +6,6 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 from datetime import date, timedelta
 from database.models import User
 from services.moon_service import moon_service, get_user_today
-from services.redis_service import redis_service
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +37,6 @@ async def show_moon_info(message: Message, user: User, target_date: date):
     processing_msg = await message.answer("Calculating moon information...")
 
     try:
-        # Clear any existing moon message records for this user/chat
-        await redis_service.delete_moon_photo_message(user.user_id, message.chat.id)
-
         moon_data = await moon_service.get_moon_data(user, target_date)
 
         if not moon_data:
@@ -53,7 +49,7 @@ async def show_moon_info(message: Message, user: User, target_date: date):
         await processing_msg.delete()
 
         moon_image = moon_data.get('moon_image')
-        photo_message = None
+        photo_id_to_pass = 0
 
         if moon_image:
             try:
@@ -66,25 +62,17 @@ async def show_moon_info(message: Message, user: User, target_date: date):
                 caption = f"<b>{phase_info['phase_name']}</b>"
 
                 photo_message = await message.answer_photo(photo=photo, caption=caption)
+                photo_id_to_pass = photo_message.message_id
                 moon_image.close()
 
             except Exception as e:
                 logger.error(f"Error sending moon image: {e}")
                 # Continue with text message even if image fails
 
-        keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user)
+        keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user, photo_id_to_pass)
         formatted_message = moon_service.format_moon_info_message(moon_data)
 
-        text_message = await message.answer(formatted_message, reply_markup=keyboard)
-
-        # Store message IDs in Redis
-        if photo_message:
-            await redis_service.set_moon_photo_message(
-                user.user_id,
-                message.chat.id,
-                photo_message.message_id,
-                text_message.message_id
-            )
+        await message.answer(formatted_message, reply_markup=keyboard)
 
     except Exception as e:
         logger.error(f"Error showing moon info for user {user.user_id}: {e}")
@@ -93,7 +81,7 @@ async def show_moon_info(message: Message, user: User, target_date: date):
             "Please try again later."
         )
 
-def create_moon_navigation_keyboard(user_id: int, current_date: date, user: User) -> InlineKeyboardMarkup:
+def create_moon_navigation_keyboard(user_id: int, current_date: date, user: User, photo_id: int) -> InlineKeyboardMarkup:
     user_today = get_user_today(user)
     yesterday = current_date - timedelta(days=1)
     tomorrow = current_date + timedelta(days=1)
@@ -111,7 +99,7 @@ def create_moon_navigation_keyboard(user_id: int, current_date: date, user: User
         [
             InlineKeyboardButton(
                 text="◀️ Prev",
-                callback_data=f"moon_date:{user_id}:{yesterday.isoformat()}"
+                callback_data=f"moon_date:{user_id}:{photo_id}:{yesterday.isoformat()}"
             ),
             InlineKeyboardButton(
                 text=current_label,
@@ -119,17 +107,17 @@ def create_moon_navigation_keyboard(user_id: int, current_date: date, user: User
             ),
             InlineKeyboardButton(
                 text="Next ▶️",
-                callback_data=f"moon_date:{user_id}:{tomorrow.isoformat()}"
+                callback_data=f"moon_date:{user_id}:{photo_id}:{tomorrow.isoformat()}"
             )
         ],
         [
             InlineKeyboardButton(
                 text="Today",
-                callback_data=f"moon_date:{user_id}:{user_today.isoformat()}"
+                callback_data=f"moon_date:{user_id}:{photo_id}:{user_today.isoformat()}"
             ),
             InlineKeyboardButton(
                 text="🔄 Refresh",
-                callback_data=f"moon_refresh:{user_id}:{current_date.isoformat()}"
+                callback_data=f"moon_refresh:{user_id}:{photo_id}:{current_date.isoformat()}"
             )
         ]
     ])
@@ -140,12 +128,13 @@ async def moon_navigation_callback(callback: CallbackQuery, user: User):
     try:
         # Parse callback data: moon_date:user_id:date
         parts = callback.data.split(':')
-        if len(parts) != 3:
+        if len(parts) != 4:
             await callback.answer("❌ Invalid callback data", show_alert=True)
             return
 
         callback_user_id = int(parts[1])
-        target_date_str = parts[2]
+        photo_id_to_edit = int(parts[2])
+        target_date_str = parts[3]
 
         if callback_user_id != user.user_id:
             await callback.answer("❌ This button is not for you!", show_alert=True)
@@ -157,7 +146,7 @@ async def moon_navigation_callback(callback: CallbackQuery, user: User):
             await callback.answer("❌ Invalid date format", show_alert=True)
             return
 
-        await _update_moon_info(callback, user, target_date)
+        await _update_moon_info(callback, user, target_date, photo_id_to_edit)
 
         if "refresh" in callback.data:
             await callback.answer("🔄 Data refreshed")
@@ -168,7 +157,7 @@ async def moon_navigation_callback(callback: CallbackQuery, user: User):
         logger.error(f"Error in moon navigation callback: {e}")
         await callback.answer("❌ Error occurred", show_alert=True)
 
-async def _update_moon_info(callback: CallbackQuery, user: User, target_date: date):
+async def _update_moon_info(callback: CallbackQuery, user: User, target_date: date, photo_id_to_edit: int):
     try:
         moon_data = await moon_service.get_moon_data(user, target_date)
 
@@ -177,9 +166,8 @@ async def _update_moon_info(callback: CallbackQuery, user: User, target_date: da
             return
 
         moon_image = moon_data.get('moon_image')
-        stored_messages = await redis_service.get_moon_photo_message(user.user_id, callback.message.chat.id)
 
-        if stored_messages and moon_image:
+        if moon_image and photo_id_to_edit > 0:
             try:
                 photo = BufferedInputFile(
                     moon_image.getvalue(),
@@ -190,7 +178,7 @@ async def _update_moon_info(callback: CallbackQuery, user: User, target_date: da
 
                 await callback.bot.edit_message_media(
                     chat_id=callback.message.chat.id,
-                    message_id=stored_messages['photo_message_id'],
+                    message_id=photo_id_to_edit,
                     media=InputMediaPhoto(media=photo, caption=caption)
                 )
             except Exception as e:
@@ -202,7 +190,7 @@ async def _update_moon_info(callback: CallbackQuery, user: User, target_date: da
         else:
             logger.warning(f"Skipping photo update for user {user.user_id}: message IDs or image missing.")
 
-        keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user)
+        keyboard = create_moon_navigation_keyboard(user.user_id, target_date, user, photo_id_to_edit)
         formatted_message = moon_service.format_moon_info_message(moon_data)
 
         await callback.message.edit_text(formatted_message, reply_markup=keyboard)
