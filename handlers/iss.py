@@ -66,7 +66,7 @@ async def show_iss_info(message: Message, user: User):
             location_msg = await message.answer_location(
                 latitude=current_pos['sat_latitude'],
                 longitude=current_pos['sat_longitude'],
-                live_period=600  # 10 minutes
+                live_period=86400  # 24 hours
             )
 
         # Create new text message
@@ -177,7 +177,7 @@ async def iss_refresh_callback(callback: CallbackQuery, user: User):
                         chat_id=callback.message.chat.id,
                         latitude=current_pos['sat_latitude'],
                         longitude=current_pos['sat_longitude'],
-                        live_period=600  # 10 minutes
+                        live_period=86400  # 24 hours
                     )
 
                     # Create new text message
