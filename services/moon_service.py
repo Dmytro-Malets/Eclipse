@@ -501,7 +501,7 @@ class MoonService:
 
             illumination_ratio = illumination_percent / 100.0
 
-            if illumination_ratio < 0.01:
+            if illumination_ratio < 0.005:
                 # New Moon
                 dark_circle = patches.Circle((0, 0), 1, facecolor='#2c2c2c', transform=transform)
                 ax.add_patch(dark_circle)
@@ -575,9 +575,9 @@ class MoonService:
         if moon_data['current_time']:
             message += f"\n<b>Current Time:</b> {moon_data['current_time']}\n\n"
         elif moon_data.get('is_meridian_time'):
-            message += f"\n<b>Data for Meridian Transit:</b> {moon_data['time']}\n\n"
+            message += f"\n<b>Meridian Transit:</b> {moon_data['time']}\n\n"
         else:
-            message += f"\n<b>Data for:</b> {moon_data['time']}\n\n"
+            message += f"\n<b>Time:</b> {moon_data['time']} (no transit on this day)\n\n"
 
         if major_phase:
             message += f"<b>{major_phase['phase_name']} at {major_phase['time']}</b>\n\n"
@@ -591,8 +591,8 @@ class MoonService:
         message += f"<b>Trend:</b> {trend}\n\n"
 
         message += f"<b>Distance from you:</b>\n"
-        message += f"• {distance['km']:,.0f} km\n"
-        message += f"• {distance['miles']:,.0f} miles"
+        message += f"• {distance['km']:,.0f} km\n".replace(',', ' ')
+        message += f"• {distance['miles']:,.0f} miles".replace(',', ' ')
 
         if moon_data['current_position']:
             pos = moon_data['current_position']
