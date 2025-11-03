@@ -69,6 +69,9 @@ class MoonService:
             # Calculate moon's apparent magnitude
             magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
 
+            # Get moonrise and moonset times
+            moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz)
+
             # Get Moon's altitude to determine the best method for zenith angle calculation
             moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
 
@@ -105,6 +108,7 @@ class MoonService:
                 'current_position': current_position,
                 'distance': distance,
                 'magnitude': magnitude,
+                'moonrise_moonset': moonrise_moonset,
                 'moon_image': moon_image,
                 'is_meridian_time': meridian_time is not None and target_date != user_today
             }
@@ -364,6 +368,54 @@ class MoonService:
             logger.error(f"Error calculating moon magnitude: {e}")
             return -12.74
 
+    def _calculate_moonrise_moonset(self, user: User, target_date: date, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, Any]:
+        try:
+            topos = wgs84.latlon(user.latitude, user.longitude) # noqa
+
+            start_datetime = tz.localize(datetime.combine(target_date, time(0, 0)))
+            end_datetime = start_datetime + timedelta(days=1)
+
+            start_utc = start_datetime.astimezone(utc)
+            end_utc = end_datetime.astimezone(utc)
+
+            t0 = self.ts.from_datetime(start_utc)
+            t1 = self.ts.from_datetime(end_utc)
+
+            times, events = almanac.find_discrete(t0, t1, almanac.risings_and_settings(self.eph, self.moon, topos))
+
+            # Keep track of all events over time.
+            events_list = []
+            for time_obj, event in zip(times, events):
+                time_utc = time_obj.utc_datetime()
+                time_local = time_utc.replace(tzinfo=utc).astimezone(tz)
+                events_list.append({
+                    'type': 'rise' if event == 1 else 'set',
+                    'time': time_local.time(),
+                    'datetime': time_local
+                })
+
+            # Sort by time
+            events_list.sort(key=lambda x: x['datetime'])
+
+            moonrise_time = None
+            moonset_time = None
+
+            for event_data in events_list:
+                if event_data['type'] == 'rise' and moonrise_time is None:
+                    moonrise_time = event_data['time']
+                elif event_data['type'] == 'set' and moonset_time is None:
+                    moonset_time = event_data['time']
+
+            return {
+                'moonrise': moonrise_time.strftime('%H:%M:%S') if moonrise_time else None,
+                'moonset': moonset_time.strftime('%H:%M:%S') if moonset_time else None,
+                'events_order': [e['type'] for e in events_list]  # ['set', 'rise'] or ['rise', 'set']
+            }
+
+        except Exception as e:
+            logger.error(f"Error calculating moonrise/moonset: {e}")
+            return {'moonrise': None, 'moonset': None, 'events_order': []}
+
     def _calculate_zenith_angle_of_bright_limb(self, observer, target_datetime: datetime) -> float:
         try:
             target_utc = target_datetime.astimezone(utc)
@@ -569,6 +621,7 @@ class MoonService:
         phase = moon_data['moon_phase']
         distance = moon_data['distance']
         major_phase = moon_data.get('major_phase_info')
+        moonrise_moonset = moon_data.get('moonrise_moonset', {})
 
         message = f"<b>{location_info['city']}. {moon_data['date_formatted']}</b>\n"
 
@@ -578,6 +631,22 @@ class MoonService:
             message += f"\n<b>Meridian Transit:</b> {moon_data['time']}\n\n"
         else:
             message += f"\n<b>Time:</b> {moon_data['time']} (no transit on this day)\n\n"
+
+        if moonrise_moonset.get('moonrise') or moonrise_moonset.get('moonset'):
+            events_order = moonrise_moonset.get('events_order', [])
+
+            for event_type in events_order:
+                if event_type == 'rise' and moonrise_moonset.get('moonrise'):
+                    message += f"<b>Moonrise:</b> {moonrise_moonset['moonrise']}\n"
+                elif event_type == 'set' and moonrise_moonset.get('moonset'):
+                    message += f"<b>Moonset:</b> {moonrise_moonset['moonset']}\n"
+
+            if not moonrise_moonset.get('moonrise') and 'rise' not in events_order:
+                message += "<b>Moonrise:</b> —\n"
+            if not moonrise_moonset.get('moonset') and 'set' not in events_order:
+                message += "<b>Moonset:</b> —\n"
+
+            message += "\n"
 
         if major_phase:
             message += f"<b>{major_phase['phase_name']} at {major_phase['time']}</b>\n\n"
