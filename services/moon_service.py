@@ -381,7 +381,7 @@ class MoonService:
             t0 = self.ts.from_datetime(start_utc)
             t1 = self.ts.from_datetime(end_utc)
 
-            times, events = almanac.find_discrete(t0, t1, almanac.risings_and_settings(self.eph, self.moon, topos))
+            times, events = almanac.find_discrete(t0, t1, almanac.risings_and_settings(self.eph, self.moon, topos, radius_degrees=16.0/60.0))
 
             # Keep track of all events over time.
             events_list = []
