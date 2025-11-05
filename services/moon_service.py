@@ -122,7 +122,7 @@ class MoonService:
     def _calculate_moon_meridian_transit(self, user: User, target_date: date) -> time | None:
         try:
             tz = pytz.timezone(user.timezone)
-            observer = wgs84.latlon(user.latitude, user.longitude)
+            observer = wgs84.latlon(user.latitude, user.longitude) # noqa
             start_datetime = tz.localize(datetime.combine(target_date, time(0, 0)))
             end_datetime = start_datetime + timedelta(days=1)
 
@@ -174,12 +174,13 @@ class MoonService:
             # When angle = 180° (opposite directions) = Full Moon = 100% illumination
             illumination = (1 - np.cos(phase_angle_rad)) / 2 * 100
             moon_age = self._calculate_moon_age(t)
-            phase_name = self._get_phase_name(illumination, is_waxing)
+            illumination_rounded = round(illumination, 1)
+            phase_name = self._get_phase_name(illumination_rounded, is_waxing)
             phase_angle = np.degrees(phase_angle_rad)
 
             return {
                 'phase_name': phase_name,
-                'illumination': round(illumination, 1),
+                'illumination': illumination_rounded,
                 'phase_angle': round(phase_angle, 1),
                 'age_days': round(moon_age, 1) if moon_age else 0,
                 'is_waxing': is_waxing
@@ -285,11 +286,11 @@ class MoonService:
 
         if illumination < 0.1:
             return "🌑 New Moon" if is_waxing else "🌘 Waning Crescent"
-        elif illumination < 49:
+        elif illumination < 50.0:
             return "🌒 Waxing Crescent" if is_waxing else "🌘 Waning Crescent"
-        elif 49 <= illumination <= 51:
+        elif illumination == 50.0:
             return "🌓 First Quarter" if is_waxing else "🌗 Third Quarter"
-        elif illumination < 99.9:
+        elif illumination <= 99.9:
             return "🌔 Waxing Gibbous" if is_waxing else "🌖 Waning Gibbous"
         else:
             return "🌕 Full Moon"
