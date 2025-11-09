@@ -75,7 +75,7 @@ class MoonService:
             # Get Moon's altitude to determine the best method for zenith angle calculation
             moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
 
-            if moon_altitude > 70.0:
+            if moon_altitude > 60.0:
                 # High Altitude: Use the stable Alt/Az horizontal coordinate method
                 moon_zenith_angle = self._calculate_zenith_angle_of_bright_limb(observer, target_datetime)
             else:
