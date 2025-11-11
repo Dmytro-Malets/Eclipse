@@ -34,12 +34,13 @@ async def show_specific_rover_photos(message: Message, user: User, rover_name: s
             return
 
         photos = rover_data['photos']
+        user_tz = user.timezone if user and user.timezone else 'UTC'
         media_group = [
             InputMediaPhoto(
                 media=photo['img_src'],
-                caption=f"Date: {photo['earth_date']}" if i == 0 else None
+                caption=f"Date: {(date_tz := mars_rover_service.format_earth_date(photo['earth_date'], user_tz))[0]} {date_tz[1]}"
             )
-            for i, photo in enumerate(photos)
+            for photo in photos
         ]
 
         photos_sent = 0
@@ -137,12 +138,13 @@ async def mars_rover_callback(callback: CallbackQuery, user: User = None):
             return
 
         photos = rover_data['photos']
+        user_tz = user.timezone if user and user.timezone else 'UTC'
         media_group = [
             InputMediaPhoto(
                 media=photo['img_src'],
-                caption=f"Date: {photo['earth_date']}" if i == 0 else None
+                caption=f"Date: {(date_tz := mars_rover_service.format_earth_date(photo['earth_date'], user_tz))[0]} {date_tz[1]}"
             )
-            for i, photo in enumerate(photos)
+            for photo in photos
         ]
 
         photos_sent = 0
