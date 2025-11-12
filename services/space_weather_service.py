@@ -511,10 +511,9 @@ class SpaceWeatherService:
             message += f"Hemisphere: {aurora_data['hemisphere']}\n"
 
             if not aurora_data['is_night']:
-                message += "Visibility: Not visible (Daytime)\n"
-                message += f"Expected forecast tonight: {aurora_data['raw_ovation_prob']}%"
+                message += "Aurora Visibility: Not visible (Daytime)"
             else:
-                message += f"Visibility: {aurora_data['visibility']}\n"
+                message += f"Aurora Visibility: {aurora_data['visibility']}\n"
                 message += f"Cloud Cover: {aurora_data['cloud_cover']}\n"
                 message += f"Viewing Chance: {aurora_data['probability_percent']}%"
         elif aurora_data is None:
