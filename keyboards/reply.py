@@ -3,12 +3,13 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def main_menu_keyboard() -> ReplyKeyboardMarkup:
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📍 Location"), KeyboardButton(text="🛰 ISS")],
+            [KeyboardButton(text="📍 Location")],
             [KeyboardButton(text="🌙 Moon"), KeyboardButton(text="☀️ Sun")],
+            [KeyboardButton(text="🛰 ISS"), KeyboardButton(text="⚡ Space Weather")],
             [KeyboardButton(text="🔭 Night Sky"), KeyboardButton(text="📸 Mars Photos")],
-            [KeyboardButton(text="⚡ Space Weather"), KeyboardButton(text="🌑 Eclipses")]
+            [KeyboardButton(text="🪐 Space Today"), KeyboardButton(text="🌑 Eclipses")]
         ],
-        resize_keyboard=True,
+        resize_keyboard=False,
         persistent=True
     )
     return keyboard

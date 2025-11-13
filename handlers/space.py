@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 async def cmd_space(message: Message, user: User = None):
     await show_space_data(message, user)
 
+async def btn_space(message: Message, user: User = None):
+    await show_space_data(message, user)
+
 async def show_space_data(message: Message, user: User = None):
     processing_msg = await message.answer("Loading space data...")
 
@@ -142,4 +145,5 @@ async def space_refresh_callback(callback: CallbackQuery, user: User = None):
 
 def register_space_handlers(dp: Dispatcher):
     dp.message.register(cmd_space, Command("space"))
+    dp.message.register(btn_space, F.text == "🪐 Space Today")
     dp.callback_query.register(space_refresh_callback, F.data.startswith("astro_refresh:"))
