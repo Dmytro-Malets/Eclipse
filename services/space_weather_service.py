@@ -507,7 +507,7 @@ class SpaceWeatherService:
         # Aurora Visibility
         aurora_data = weather_data.get('aurora')
         if aurora_data:
-            message += f"<b>Aurora Forecast:</b>\n"
+            message += f"<b>Aurora Conditions:</b>\n"
             message += f"Hemisphere: {aurora_data['hemisphere']}\n"
 
             if not aurora_data['is_night']:
@@ -517,7 +517,7 @@ class SpaceWeatherService:
                 message += f"Cloud Cover: {aurora_data['cloud_cover']}\n"
                 message += f"Viewing Chance: {aurora_data['probability_percent']}%"
         elif aurora_data is None:
-            message += "<b>Aurora Forecast:</b> Unable to load forecast"
+            message += "<b>Aurora Conditions:</b> Unable to load data"
 
         return message
 
