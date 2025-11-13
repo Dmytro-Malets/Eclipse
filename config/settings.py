@@ -1,24 +1,30 @@
 import os
-from services.customerror import  MissingEnvVariableError
+from services.customerror import MissingEnvVariableError
 
-MODE = os.environ.get("MODE", "dev")
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
-NASA_API_KEY = os.environ.get('NASA_API_KEY', 'DEMO_KEY')
-N2YO_API_KEY = os.environ.get('N2YO_API_KEY')
-WEATHER_API_KEY = os.environ.get('WEATHER_API_KEY')
-DATABASE_URL = os.environ.get("DATABASE_URL")
-REDIS_URL = os.environ.get("REDIS_URL")
+IS_PROD = True
 
-if not BOT_TOKEN:
-    raise MissingEnvVariableError("BOT_TOKEN not set in .env file!")
-if not GOOGLE_API_KEY:
-    raise MissingEnvVariableError("GOOGLE_API_KEY not set in .env file!")
-if not NASA_API_KEY:
-    raise MissingEnvVariableError("NASA_API_KEY not set in .env file!")
-if not N2YO_API_KEY:
-    raise MissingEnvVariableError("N2YO_API_KEY not set in .env file!")
-if not WEATHER_API_KEY:
-    raise MissingEnvVariableError("WEATHER_API_KEY not set in .env file!")
-if not REDIS_URL:
-    raise MissingEnvVariableError("REDIS_URL not set in .env file!")
+def get_env_var(key, default=None):
+    if not IS_PROD:
+        from os import getenv
+        from dotenv import load_dotenv
+        load_dotenv()
+        return getenv(key, default)
+    return os.environ.get(key, default)
+
+BOT_TOKEN = get_env_var("BOT_TOKEN")
+GOOGLE_API_KEY = get_env_var("GOOGLE_API_KEY")
+NASA_API_KEY = get_env_var("NASA_API_KEY", "DEMO_KEY")
+N2YO_API_KEY = get_env_var("N2YO_API_KEY")
+WEATHER_API_KEY = get_env_var("WEATHER_API_KEY")
+DATABASE_URL = get_env_var("DATABASE_URL") if IS_PROD else "sqlite+aiosqlite:///bot.db"
+REDIS_URL = get_env_var("REDIS_URL") if IS_PROD else "redis://127.0.0.1:6379/0"
+
+for env_key, value in {
+    "BOT_TOKEN": BOT_TOKEN,
+    "GOOGLE_API_KEY": GOOGLE_API_KEY,
+    "NASA_API_KEY": NASA_API_KEY,
+    "N2YO_API_KEY": N2YO_API_KEY,
+    "WEATHER_API_KEY": WEATHER_API_KEY
+}.items():
+    if not value:
+        raise MissingEnvVariableError(f"{env_key} not set in environment file!")

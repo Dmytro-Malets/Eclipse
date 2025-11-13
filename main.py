@@ -2,7 +2,7 @@ import asyncio, logging
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from config.settings import BOT_TOKEN, MODE
+from config.settings import BOT_TOKEN, IS_PROD
 from config.logging_config import configure_logging
 from database.database import check_connection
 from handlers import register_all_handlers, set_commands
@@ -16,8 +16,7 @@ async def startup() -> bool:
 
 async def main():
 
-    prod = MODE.lower() == 'prod'
-    configure_logging(prod)
+    configure_logging(IS_PROD)
 
     logger = logging.getLogger(__name__)
 
