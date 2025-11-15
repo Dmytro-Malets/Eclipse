@@ -180,10 +180,15 @@ class ISSService:
             if 0 < time_diff.total_seconds() < 3600:
                 time_desc = "Soon"
             elif start_dt.date() == now.date():
-                if now.hour < 4 and start_dt.hour > 6:
+                pass_hour = start_dt.hour
+                if 5 <= pass_hour < 12:
                     time_desc = "This morning"
+                elif 12 <= pass_hour < 17:
+                    time_desc = "This afternoon"
+                elif 17 <= pass_hour < 22:
+                    time_desc = "This evening"
                 else:
-                    time_desc = "Today"
+                    time_desc = "Tonight"
             elif start_dt.date() == (now + timedelta(days=1)).date():
                 time_desc = "Tomorrow"
             else:
