@@ -637,21 +637,20 @@ class MoonService:
         else:
             message += f"\n<b>Time:</b> {moon_data['time']} (no transit on this day)\n\n"
 
-        if moonrise_moonset.get('moonrise') or moonrise_moonset.get('moonset'):
-            events_order = moonrise_moonset.get('events_order', [])
+        events_order = moonrise_moonset.get('events_order', [])
 
-            for event_type in events_order:
-                if event_type == 'rise' and moonrise_moonset.get('moonrise'):
-                    message += f"<b>Moonrise:</b> {moonrise_moonset['moonrise']}\n"
-                elif event_type == 'set' and moonrise_moonset.get('moonset'):
-                    message += f"<b>Moonset:</b> {moonrise_moonset['moonset']}\n"
+        for event_type in events_order:
+            if event_type == 'rise' and moonrise_moonset.get('moonrise'):
+                message += f"<b>Moonrise:</b> {moonrise_moonset['moonrise']}\n"
+            elif event_type == 'set' and moonrise_moonset.get('moonset'):
+                message += f"<b>Moonset:</b> {moonrise_moonset['moonset']}\n"
 
-            if not moonrise_moonset.get('moonrise') and 'rise' not in events_order:
-                message += "<b>Moonrise:</b> —\n"
-            if not moonrise_moonset.get('moonset') and 'set' not in events_order:
-                message += "<b>Moonset:</b> —\n"
+        if not moonrise_moonset.get('moonrise') and 'rise' not in events_order:
+            message += "<b>Moonrise:</b> —\n"
+        if not moonrise_moonset.get('moonset') and 'set' not in events_order:
+            message += "<b>Moonset:</b> —\n"
 
-            message += "\n"
+        message += "\n"
 
         if major_phase:
             message += f"<b>{major_phase['phase_name']} at {major_phase['time']}</b>\n\n"

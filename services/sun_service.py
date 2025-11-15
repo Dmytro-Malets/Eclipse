@@ -198,7 +198,7 @@ class SunService:
             alt, az, _ = sun_obs.altaz()
 
             return {
-                'elevation': round(alt.degrees, 1),
+                'altitude': round(alt.degrees, 1),
                 'azimuth': round(az.degrees, 1),
                 'is_up': alt.degrees > (-34.0/60.0 - 16.0/60.0)
             }
@@ -286,7 +286,7 @@ class SunService:
                 pos = sun_data['current_position']
                 message += f"<b>Current Sun Position:</b>\n"
                 message += f"• <b>Azimuth:</b> {safe(pos.get('azimuth'))}°\n"
-                message += f"• <b>Altitude:</b> {safe(pos.get('elevation'))}°\n"
+                message += f"• <b>Altitude:</b> {safe(pos.get('altitude'))}°\n"
                 message += f"• <b>Status:</b> {'Above horizon' if pos.get('is_up') else 'Below horizon'}"
 
         return message
