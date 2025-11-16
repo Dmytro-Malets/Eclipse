@@ -1,7 +1,7 @@
 import logging, aiohttp, pytz, re, math
 from datetime import datetime, tzinfo, timezone
 from typing import Dict, Any
-from astral import sun, LocationInfo
+from skyfield.api import load, wgs84, utc
 from database.models import User
 from .weather_api_service import weather_api_service
 
@@ -18,6 +18,12 @@ class SpaceWeatherService:
             'solar_flares': f"{self.noaa_url}/json/goes/primary/xrays-7-day.json",
             'ovation_json': f"{self.noaa_url}/json/ovation_aurora_latest.json"
         }
+
+        # Load ephemeris data
+        self.ts = load.timescale()
+        self.eph = load('de421.bsp')  # NASA JPL ephemeris
+        self.earth = self.eph['earth']
+        self.sun = self.eph['sun']
 
     async def get_space_weather(self, user: User) -> Dict[str, Any] | None:
         if not user.has_location:
@@ -329,25 +335,11 @@ class SpaceWeatherService:
 
                     now_local = datetime.now(user_tz)
 
-                    location = LocationInfo(
-                        name=user.city,
-                        region="",
-                        timezone=user.timezone,
-                        latitude=user.latitude,
-                        longitude=user.longitude
-                    )
+                    # Creating a Skyfield observer
+                    observer = self.earth + wgs84.latlon(user.latitude, user.longitude)
 
-                    try:
-                        s = sun.sun(location.observer, date=now_local.date(), tzinfo=user_tz)
-                        sunrise_local = s['sunrise']
-                        sunset_local = s['sunset']
-
-                        is_night = not (sunrise_local < now_local < sunset_local)
-
-                    except Exception as e:
-                        logger.warning(f"Could not calculate sunrise/sunset for user {user.user_id}: {e}. Falling back to simple hour check.")
-                        hour = now_local.hour
-                        is_night = not (7 <= hour < 20)
+                    # Check if it is dark enough for aurora (Civil Twilight, Sun < -6 degrees)
+                    is_night = self._is_dark(observer, now_local)
 
                     cloud_cover_percent = None
                     if weather:
@@ -382,6 +374,21 @@ class SpaceWeatherService:
         except Exception as e:
             logger.error(f"Error fetching OVATION forecast: {e}")
             return None
+
+    def _is_dark(self, observer, target_datetime: datetime) -> bool:
+        # Checks if it is dark enough for aurora viewing (Civil Twilight)
+        try:
+            t = self.ts.from_datetime(target_datetime.astimezone(utc))
+            sun_obs = observer.at(t).observe(self.sun).apparent()
+
+            alt, az, _ = sun_obs.altaz()
+
+            return alt.degrees < -6.0
+
+        except Exception as e:
+            logger.warning(f"Skyfield 'is_dark' check failed: {e}. Falling back to hour check.")
+            hour = target_datetime.hour
+            return not (7 <= hour < 20)
 
     @staticmethod
     def _classify_solar_flare(flux: float) -> Dict[str, Any]:
