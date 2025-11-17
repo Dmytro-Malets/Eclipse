@@ -21,11 +21,12 @@ async def rovers_button_handler(message: Message, user: User = None):
 
 async def show_specific_rover_photos(message: Message, user: User, rover_name: str):
     try:
-        await message.answer(f"Loading {rover_name.capitalize()} rover photos...")
+        loading_msg = await message.answer(f"Loading {rover_name.capitalize()} rover photos...")
 
         rover_data = await mars_rover_service.get_rover_latest_photos(rover_name, max_photos=10)
 
         if not rover_data or not rover_data.get('photos'):
+            await loading_msg.delete()
             await message.answer(
                 f"❌ <b>No photos available for {rover_name.title()}</b>\n\n"
                 "The rover might not have taken photos recently.\n"
@@ -48,6 +49,8 @@ async def show_specific_rover_photos(message: Message, user: User, rover_name: s
             batch = media_group[photos_sent:photos_sent + 10]
             await message.answer_media_group(batch)
             photos_sent += 10
+
+        await loading_msg.delete()
 
         back_keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(
