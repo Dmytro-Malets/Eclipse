@@ -1,5 +1,6 @@
-import logging, pytz, io
-import matplotlib.pyplot as plt
+import asyncio, logging, pytz, io
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 import matplotlib.patches as patches
 import matplotlib.transforms as transforms
 import numpy as np
@@ -88,8 +89,11 @@ class MoonService:
 
                 moon_zenith_angle = pa_bright_limb - parallactic_angle
 
+            # Retrieve the loop instance for CPU-bound task offloading
+            loop = asyncio.get_running_loop()
+
             # Generate moon phase image
-            moon_image = self._generate_moon_image(moon_phase['illumination'], moon_zenith_angle)
+            moon_image = await loop.run_in_executor(None, self._generate_moon_image, moon_phase['illumination'], moon_zenith_angle)
 
             # Assign the pre-calculated position data only if the target date is today
             current_position = moon_pos_data if target_date == user_today else None
@@ -543,7 +547,9 @@ class MoonService:
 
     def _generate_moon_image(self, illumination_percent: float, rotation_angle: float = 0.0) -> BinaryIO | None:
         try:
-            fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+            fig = Figure(figsize=(6, 6))
+            FigureCanvasAgg(fig)
+            ax = fig.add_subplot(111)
             fig.patch.set_facecolor('black')
             ax.set_facecolor('black')
             ax.set_xlim(-1.2, 1.2)
@@ -570,9 +576,8 @@ class MoonService:
 
             # Save
             img_buffer = io.BytesIO()
-            plt.savefig(img_buffer, format='png', dpi=250, bbox_inches='tight', facecolor='black')
+            fig.savefig(img_buffer, format='png', dpi=250, bbox_inches='tight', facecolor='black')
             img_buffer.seek(0)
-            plt.close(fig)
 
             return img_buffer
 
