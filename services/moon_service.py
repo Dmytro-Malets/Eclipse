@@ -9,6 +9,8 @@ from typing import Dict, Any, BinaryIO
 from skyfield.api import load, wgs84, utc
 from skyfield import almanac
 from database.models import User
+from .weather_api_service import weather_api_service, get_temp_pressure_conditions
+from .astro_utils import calculate_extended_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,11 @@ class MoonService:
             # Create observer location
             observer = self.earth + wgs84.latlon(user.latitude, user.longitude)
 
+            weather_data = None
+            # Fetch real-time temperature and pressure data to improve refraction calculation accuracy
+            if target_date == user_today:
+                weather_data = await weather_api_service.get_current_weather(user)
+
             # Get moon phase
             moon_phase = self._calculate_moon_phase(target_datetime)
 
@@ -62,7 +69,7 @@ class MoonService:
             major_phase_info = self._find_major_phase_on_date(target_date, tz)
 
             # Get current moon position
-            moon_pos_data = self._get_moon_position(observer, target_datetime)
+            moon_pos_data = self._get_moon_position(observer, target_datetime, weather_data)
 
             # Get moon distance
             distance = self._get_moon_distance(observer, target_datetime)
@@ -299,18 +306,27 @@ class MoonService:
         else:
             return "🌕 Full Moon"
 
-    def _get_moon_position(self, observer, target_datetime: datetime) -> Dict[str, Any] | None:
+    def _get_moon_position(self, observer, target_datetime: datetime, weather_data: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
         try:
             target_utc = target_datetime.astimezone(utc)
             t = self.ts.from_datetime(target_utc)
             moon = self.moon
             moon_obs = observer.at(t).observe(moon).apparent()
-            alt, az, _ = moon_obs.altaz()
+            alt_geometric, az, _ = moon_obs.altaz()
+
+            # Extract weather conditions
+            conditions = get_temp_pressure_conditions(weather_data)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
+            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+
+            MOON_RADIUS = 16.0 / 60.0
 
             return {
-                'altitude': round(alt.degrees, 1),
+                'altitude': round(alt_apparent_deg, 1),
                 'azimuth': round(az.degrees, 1),
-                'is_up': alt.degrees > 0
+                'is_up': alt_apparent_deg > -MOON_RADIUS
             }
 
         except Exception as e:

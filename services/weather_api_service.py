@@ -34,8 +34,16 @@ class WeatherAPIService:
 
                     cloud_cover = data.get('clouds', {}).get('all')
 
-                    if cloud_cover is not None:
-                        return {'cloud_cover': cloud_cover}
+                    main_data = data.get('main', {})
+                    temp_c = main_data.get('temp')
+                    pressure_mbar = main_data.get('grnd_level') or main_data.get('pressure')
+
+                    if cloud_cover is not None and temp_c is not None and pressure_mbar is not None:
+                        return {
+                            'cloud_cover': cloud_cover,
+                            'temp_c': temp_c,
+                            'pressure_mbar': pressure_mbar
+                        }
                     else:
                         logger.warning("Cloud data not found in OpenWeatherMap response.")
                         return None
@@ -46,3 +54,16 @@ class WeatherAPIService:
 
 
 weather_api_service = WeatherAPIService()
+
+def get_temp_pressure_conditions(weather_data: Dict[str, Any] | None) -> Dict[str, Any]:
+    temp_default = 10.0
+    pressure_default = 1010.0
+
+    if weather_data and 'temp_c' in weather_data and 'pressure_mbar' in weather_data:
+        temp = float(weather_data['temp_c'])
+        pressure = float(weather_data['pressure_mbar'])
+    else:
+        temp = temp_default
+        pressure = pressure_default
+
+    return {'temperature_C': temp, 'pressure_mbar': pressure}

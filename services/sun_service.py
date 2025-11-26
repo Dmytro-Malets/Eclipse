@@ -5,6 +5,8 @@ from skyfield.api import load, wgs84, utc
 from skyfield import almanac
 from database.models import User
 from .uv_service import UVService
+from .weather_api_service import weather_api_service, get_temp_pressure_conditions
+from .astro_utils import calculate_extended_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +36,11 @@ class SunService:
             topos = wgs84.latlon(user.latitude, user.longitude)
             observer = self.earth + wgs84.latlon(user.latitude, user.longitude)
 
+            weather_data = None
+            if target_date == user_today:
+                # Fetch real-time temperature and pressure data to improve refraction calculation accuracy
+                weather_data = await weather_api_service.get_current_weather(user)
+
             # Determine the start and end of the 24-hour search range, localized to the user's timezone
             start_time_of_day = datetime.combine(target_date, time(0, 0))
             start_datetime_local = tz.localize(start_time_of_day)
@@ -51,13 +58,13 @@ class SunService:
             solar_noon_dt = self._calculate_solar_noon(topos, t0, t1, tz)
 
             # Calculate sun position at solar noon and determine display time
-            if noon_pos := (self._get_sun_position(observer, solar_noon_dt) if solar_noon_dt else None):
+            if noon_pos := (self._get_sun_position(observer, solar_noon_dt, weather_data) if solar_noon_dt else None):
                 solar_noon_dt_display = None if not noon_pos['is_up'] else solar_noon_dt
             else:
                 solar_noon_dt_display = None
 
             # Get current position (for today only)
-            sun_position = self._get_sun_position(observer, now) if target_date == user_today else None
+            sun_position = self._get_sun_position(observer, now, weather_data) if target_date == user_today else None
 
             # Get the UV index (for today only)
             uv_data = None
@@ -190,17 +197,25 @@ class SunService:
             logger.error(f"Error calculating solar noon: {e}")
             return None
 
-    def _get_sun_position(self, observer, target_datetime: datetime) -> Dict[str, Any] | None:
+    def _get_sun_position(self, observer, target_datetime: datetime, weather_data: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
         try:
             t = self.ts.from_datetime(target_datetime.astimezone(utc))
             sun_obs = observer.at(t).observe(self.sun).apparent()
+            alt_geometric, az, _ = sun_obs.altaz()
 
-            alt, az, _ = sun_obs.altaz()
+            # Extract weather conditions
+            conditions = get_temp_pressure_conditions(weather_data)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
+            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+
+            SUN_RADIUS = 16.0 / 60.0
 
             return {
-                'altitude': round(alt.degrees, 1),
+                'altitude': round(alt_apparent_deg, 1),
                 'azimuth': round(az.degrees, 1),
-                'is_up': alt.degrees > (-34.0/60.0 - 16.0/60.0)
+                'is_up': alt_apparent_deg > -SUN_RADIUS
             }
         except Exception as e:
             logger.error(f"Error getting sun position: {e}")
