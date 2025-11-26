@@ -528,9 +528,6 @@ class MoonService:
             # Get Moon's position
             moon_obs = observer.at(t).observe(self.moon).apparent()
 
-            # Get altitude and azimuth for logging purposes
-            alt, az, _ = moon_obs.altaz()
-
             # Get Right Ascension and Declination
             ra, dec, _ = moon_obs.radec()
 

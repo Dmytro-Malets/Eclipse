@@ -5,7 +5,8 @@ from typing import Dict, Any, List
 from skyfield.api import load, wgs84, Star
 from skyfield.magnitudelib import planetary_magnitude
 from database.models import User
-from .weather_api_service import weather_api_service
+from .weather_api_service import weather_api_service, get_temp_pressure_conditions
+from .astro_utils import calculate_extended_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -53,21 +54,23 @@ class NightSkyService:
             # Convert to skyfield time
             t = self.ts.from_datetime(target_datetime.astimezone(pytz.utc))
 
+            # Get weather data
+            weather_data = None
+            if target_date == user_today:
+                weather_data = await weather_api_service.get_current_weather(user)
+
             # Get sun and moon positions
-            sun_data = self._get_celestial_position(observer, t, self.sun, 'Sun')
-            moon_data = self._get_celestial_position(observer, t, self.moon, 'Moon')
+            sun_data = self._get_celestial_position(observer, t, self.sun, 'Sun', weather_data)
+            moon_data = self._get_celestial_position(observer, t, self.moon, 'Moon', weather_data)
 
             # Check if it's nighttime
             is_night = sun_data['altitude'] < -6
 
             # Get visible planets
-            visible_planets = self._get_visible_planets(observer, t)
+            visible_planets = self._get_visible_planets(observer, t, weather_data)
 
             # Get the brightest stars
-            brightest_stars = self._get_brightest_stars(observer, t)
-
-            # Get weather data (cloud cover)
-            weather_data = await weather_api_service.get_current_weather(user)
+            brightest_stars = self._get_brightest_stars(observer, t, weather_data)
 
             result = {
                 'location': {
@@ -84,7 +87,7 @@ class NightSkyService:
                 'planets': visible_planets,
                 'stars': brightest_stars,
                 'sky_condition': self._get_sky_condition(sun_data['altitude']),
-                'cloud_cover': weather_data.get('cloud_cover') if weather_data else None
+                'cloud_cover': weather_data.get('cloud_cover') if weather_data and target_date == user_today else None
             }
 
             return result
@@ -94,15 +97,28 @@ class NightSkyService:
             return None
 
     @staticmethod
-    def _get_celestial_position(observer, t, body, name: str) -> Dict[str, Any]:
+    def _get_celestial_position(observer, t, body, name: str, weather_data: Dict[str, Any] | None = None) -> Dict[str, Any]:
         try:
             apparent = observer.at(t).observe(body).apparent()
-            alt, az, distance = apparent.altaz()
+            geom_alt, az, distance = apparent.altaz()
+
+            # Extract weather conditions
+            conditions = get_temp_pressure_conditions(weather_data)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
+            apparent_alt_deg = calculate_extended_refraction(geom_alt.degrees, temp_c, pressure)
+
+            if name in ('Sun', 'Moon'):
+                is_visible = apparent_alt_deg > -(16.0 / 60.0)
+            else:
+                is_visible = apparent_alt_deg > 0.0
+
             return {
                 'name': name,
-                'altitude': round(alt.degrees, 1),
+                'altitude': round(apparent_alt_deg, 1),
                 'azimuth': round(az.degrees, 1),
-                'is_visible': alt.degrees > 0,
+                'is_visible': is_visible,
                 'distance_au': round(distance.au, 3) if hasattr(distance, 'au') else None
             }
         except Exception as e:
@@ -115,11 +131,11 @@ class NightSkyService:
                 'distance_au': None
             }
 
-    def _get_visible_planets(self, observer, t) -> List[Dict[str, Any]]:
+    def _get_visible_planets(self, observer, t, weather_data: Dict[str, Any] | None = None) -> List[Dict[str, Any]]:
         visible = []
 
         for name, planet in self.planets.items():
-            position = self._get_celestial_position(observer, t, planet, name)
+            position = self._get_celestial_position(observer, t, planet, name, weather_data)
             # Only include if above horizon
             if position['is_visible']:
                 magnitude = self._calculate_planet_magnitude(t, planet, name)
@@ -145,7 +161,7 @@ class NightSkyService:
             return None
 
     @staticmethod
-    def _get_brightest_stars(observer, t, limit: int = 8) -> List[Dict[str, Any]]:
+    def _get_brightest_stars(observer, t, weather_data: Dict[str, Any] | None = None, limit: int = 8) -> List[Dict[str, Any]]:
         try:
             notable_stars = [
                 {'name': 'Sirius', 'ra_hours': 6.7525, 'dec_degrees': -16.7161, 'magnitude': -1.46},
@@ -191,29 +207,60 @@ class NightSkyService:
                 {'name': 'Alhena', 'ra_hours': 6.6287, 'dec_degrees': 16.3994, 'magnitude': 1.93},
                 {'name': 'Peacock', 'ra_hours': 20.4274, 'dec_degrees': -56.7350, 'magnitude': 1.94},
                 {'name': 'Polaris', 'ra_hours': 2.5301, 'dec_degrees': 89.2641, 'magnitude': 1.98},
+                {'name': 'Alphard', 'ra_hours': 9.4597, 'dec_degrees': -8.6586, 'magnitude': 1.98},
+                {'name': 'Hamal', 'ra_hours': 2.1196, 'dec_degrees': 23.4624, 'magnitude': 2.00},
                 {'name': 'Diphda', 'ra_hours': 0.7265, 'dec_degrees': -17.9866, 'magnitude': 2.04},
+                {'name': 'Nunki', 'ra_hours': 18.9210, 'dec_degrees': -26.2967, 'magnitude': 2.05},
                 {'name': 'Alpheratz', 'ra_hours': 0.1398, 'dec_degrees': 29.0905, 'magnitude': 2.06},
+                {'name': 'Saiph', 'ra_hours': 5.7959, 'dec_degrees': -9.6697, 'magnitude': 2.06},
                 {'name': 'Rasalhague', 'ra_hours': 17.5822, 'dec_degrees': 12.5600, 'magnitude': 2.08},
+                {'name': 'Kochab', 'ra_hours': 14.8451, 'dec_degrees': 74.1553, 'magnitude': 2.08},
+                {'name': 'Algieba', 'ra_hours': 10.3328, 'dec_degrees': 19.8414, 'magnitude': 2.08},
+                {'name': 'Algol', 'ra_hours': 3.1362, 'dec_degrees': 40.9557, 'magnitude': 2.12, 'variable': True, 'variation': '±1.4'},
+                {'name': 'Denebola', 'ra_hours': 11.8177, 'dec_degrees': 14.5721, 'magnitude': 2.14},
                 {'name': 'Sadr', 'ra_hours': 20.3703, 'dec_degrees': 40.2567, 'magnitude': 2.23},
+                {'name': 'Mizar', 'ra_hours': 13.3988, 'dec_degrees': 54.9254, 'magnitude': 2.23},
+                {'name': 'Eltanin', 'ra_hours': 17.9434, 'dec_degrees': 51.4889, 'magnitude': 2.23},
                 {'name': 'Schedar', 'ra_hours': 0.6753, 'dec_degrees': 56.5373, 'magnitude': 2.24},
+                {'name': 'Caph', 'ra_hours': 0.1527, 'dec_degrees': 59.1497, 'magnitude': 2.28},
+                {'name': 'Ankaa', 'ra_hours': 0.4381, 'dec_degrees': -42.3061, 'magnitude': 2.38},
+                {'name': 'Enif', 'ra_hours': 21.7364, 'dec_degrees': 9.8750, 'magnitude': 2.40},
+                {'name': 'Scheat', 'ra_hours': 23.0628, 'dec_degrees': 28.0828, 'magnitude': 2.42, 'variable': True, 'variation': '±0.2'},
+                {'name': 'Sabik', 'ra_hours': 17.1733, 'dec_degrees': -15.7249, 'magnitude': 2.43},
+                {'name': 'Alderamin', 'ra_hours': 21.3096, 'dec_degrees': 62.5853, 'magnitude': 2.44},
+                {'name': 'Aludra', 'ra_hours': 7.4013, 'dec_degrees': -29.3031, 'magnitude': 2.45},
                 {'name': 'Markab', 'ra_hours': 23.0793, 'dec_degrees': 15.2053, 'magnitude': 2.49},
+                {'name': 'Menkar', 'ra_hours': 3.0380, 'dec_degrees': 4.0897, 'magnitude': 2.54},
+                {'name': 'Gienah', 'ra_hours': 12.2634, 'dec_degrees': -17.5418, 'magnitude': 2.59},
+                {'name': 'Unukalhai', 'ra_hours': 15.7378, 'dec_degrees': 6.4258, 'magnitude': 2.63},
+                {'name': 'Zubenelgenubi', 'ra_hours': 14.8479, 'dec_degrees': -16.0417, 'magnitude': 2.75},
                 {'name': 'Vindemiatrix', 'ra_hours': 13.0366, 'dec_degrees': 10.9592, 'magnitude': 2.85},
+                {'name': 'Aljanah', 'ra_hours': 20.7706, 'dec_degrees': 33.9703, 'magnitude': 2.86},
+                {'name': 'Acamar', 'ra_hours': 2.9710, 'dec_degrees': -40.3047, 'magnitude': 2.88},
+                {'name': 'Pherkad', 'ra_hours': 15.3453, 'dec_degrees': 71.8340, 'magnitude': 3.00},
             ]
 
             visible_stars = []
 
+            # Extract weather conditions
+            conditions = get_temp_pressure_conditions(weather_data)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
             for star_data in notable_stars:
                 star = Star(ra_hours=star_data['ra_hours'], dec_degrees=star_data['dec_degrees'])
                 apparent = observer.at(t).observe(star).apparent()
-                alt, az, _ = apparent.altaz()
+                alt_geometric, az, _ = apparent.altaz()
 
-                if alt.degrees > 0:
+                alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+
+                if alt_apparent_deg > 0.0:
                     is_variable = star_data.get('variable', False)
                     variation = star_data.get('variation', None)
 
                     visible_stars.append({
                         'name': star_data['name'],
-                        'altitude': round(alt.degrees, 1),
+                        'altitude': round(alt_apparent_deg, 1),
                         'azimuth': round(az.degrees, 1),
                         'magnitude': star_data['magnitude'],
                         'is_variable': is_variable,
