@@ -64,7 +64,7 @@ class NightSkyService:
             moon_data = self._get_celestial_position(observer, t, self.moon, 'Moon', weather_data)
 
             # Check if it's nighttime
-            is_night = sun_data['altitude'] < -6
+            is_night = sun_data['altitude'] < -6.0
 
             # Get visible planets
             visible_planets = self._get_visible_planets(observer, t, weather_data)
@@ -277,22 +277,22 @@ class NightSkyService:
 
     @staticmethod
     def _get_sky_condition(sun_altitude: float) -> Dict[str, Any]:
-        if sun_altitude > 0:
+        if sun_altitude > 0.0:
             return {
                 'condition': 'Daytime',
                 'description': 'Planets and stars not visible'
             }
-        elif sun_altitude > -6:
+        elif sun_altitude > -6.0:
             return {
                 'condition': 'Civil Twilight',
                 'description': 'Brightest planets may be visible'
             }
-        elif sun_altitude > -12:
+        elif sun_altitude > -12.0:
             return {
                 'condition': 'Nautical Twilight',
                 'description': 'Bright stars and planets visible'
             }
-        elif sun_altitude > -18:
+        elif sun_altitude > -18.0:
             return {
                 'condition': 'Astronomical Twilight',
                 'description': 'Most stars and planets visible'

@@ -164,7 +164,7 @@ class EclipseService:
         return upcoming
 
     @staticmethod
-    def _format_duration(duration_str: str) -> str:
+    def _format_duration(duration_str: str) -> str | None:
         if not duration_str or duration_str in ['-', 'N/A']:
             return None
 
@@ -250,8 +250,13 @@ class EclipseService:
                 peak_time = t[i]
                 peak_time_local = peak_time.astimezone(tz)
                 moon_obs = observer.at(peak_time).observe(self.moon).apparent()
-                alt, az, _ = moon_obs.altaz()
-                is_visible = alt.degrees > 0
+
+                # Use Skyfield's standard atmospheric refraction (10°C, 1010 mbar)
+                alt, az, _ = moon_obs.altaz(temperature_C='standard')
+
+                MOON_RADIUS = 16.0 / 60.0
+
+                is_visible = alt.degrees > -MOON_RADIUS
 
                 eclipses.append({
                     'eclipse_type': eclipse_type,

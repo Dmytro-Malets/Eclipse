@@ -3,7 +3,8 @@ from datetime import datetime, tzinfo, timezone
 from typing import Dict, Any
 from skyfield.api import load, wgs84, utc
 from database.models import User
-from .weather_api_service import weather_api_service
+from .weather_api_service import weather_api_service, get_temp_pressure_conditions
+from .astro_utils import calculate_extended_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -290,7 +291,7 @@ class SpaceWeatherService:
             logger.error(f"Error fetching solar flares: {e}")
             return None
 
-    async def _get_ovation_forecast(self, user: User, user_tz: tzinfo, weather: Dict[str, Any] | None) -> Dict[str, Any] | None:
+    async def _get_ovation_forecast(self, user: User, user_tz: tzinfo, weather: Dict[str, Any] | None = None) -> Dict[str, Any] | None:
         try:
             timeout = aiohttp.ClientTimeout(total=10)
             async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -339,7 +340,7 @@ class SpaceWeatherService:
                     observer = self.earth + wgs84.latlon(user.latitude, user.longitude)
 
                     # Check if it is dark enough for aurora (Civil Twilight, Sun < -6 degrees)
-                    is_night = self._is_dark(observer, now_local)
+                    is_night = self._is_dark(observer, now_local, weather)
 
                     cloud_cover_percent = None
                     if weather:
@@ -375,15 +376,22 @@ class SpaceWeatherService:
             logger.error(f"Error fetching OVATION forecast: {e}")
             return None
 
-    def _is_dark(self, observer, target_datetime: datetime) -> bool:
-        # Checks if it is dark enough for aurora viewing (Civil Twilight)
+    def _is_dark(self, observer, target_datetime: datetime, weather_data: Dict[str, Any] | None = None) -> bool:
+        # Checks if it is dark enough for aurora viewing (Nautical Twilight or darker)
         try:
             t = self.ts.from_datetime(target_datetime.astimezone(utc))
             sun_obs = observer.at(t).observe(self.sun).apparent()
 
-            alt, az, _ = sun_obs.altaz()
+            alt_geometric, _, _ = sun_obs.altaz()
 
-            return alt.degrees < -6.0
+            # Extract weather conditions
+            conditions = get_temp_pressure_conditions(weather_data)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
+            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+
+            return alt_apparent_deg < -6.0
 
         except Exception as e:
             logger.warning(f"Skyfield 'is_dark' check failed: {e}. Falling back to hour check.")
