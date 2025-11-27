@@ -56,8 +56,8 @@ class WeatherAPIService:
 weather_api_service = WeatherAPIService()
 
 def get_temp_pressure_conditions(weather_data: Dict[str, Any] | None) -> Dict[str, Any]:
-    temp_default = 10.0
-    pressure_default = 1010.0
+    temp_default = 15.0
+    pressure_default = 1030.0
 
     if weather_data and 'temp_c' in weather_data and 'pressure_mbar' in weather_data:
         temp = float(weather_data['temp_c'])

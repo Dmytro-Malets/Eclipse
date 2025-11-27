@@ -1,6 +1,6 @@
 # Eclipse
 
-[![Release](https://img.shields.io/badge/release-v1.7.0-orange)](https://github.com/Dmytro-Malets/Eclipse/releases)
+[![Release](https://img.shields.io/badge/release-v1.8.0-orange)](https://github.com/Dmytro-Malets/Eclipse/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/Dmytro-Malets/Eclipse/blob/main/LICENSE)
 
 **Eclipse** - your personal astronomy assistant in Telegram. The bot provides up-to-date information about celestial objects, space weather, ISS, and much more based on your location.

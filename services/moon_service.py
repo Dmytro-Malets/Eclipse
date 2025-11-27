@@ -10,7 +10,7 @@ from skyfield.api import load, wgs84, utc
 from skyfield import almanac
 from database.models import User
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_extended_refraction
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class MoonService:
             magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
 
             # Get moonrise and moonset times
-            moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz)
+            moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz, weather_data)
 
             # Get Moon's altitude to determine the best method for zenith angle calculation
             moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
@@ -133,7 +133,7 @@ class MoonService:
     def _calculate_moon_meridian_transit(self, user: User, target_date: date) -> time | None:
         try:
             tz = pytz.timezone(user.timezone)
-            observer = wgs84.latlon(user.latitude, user.longitude) # noqa
+            topos = wgs84.latlon(user.latitude, user.longitude) # noqa
             start_datetime = tz.localize(datetime.combine(target_date, time(0, 0)))
             end_datetime = start_datetime + timedelta(days=1)
 
@@ -146,7 +146,7 @@ class MoonService:
             t1 = self.ts.from_datetime(end_utc)
 
             # Find meridian transit times
-            times, events = almanac.find_discrete(t0, t1, almanac.meridian_transits(self.eph, self.moon, observer))
+            times, events = almanac.find_discrete(t0, t1, almanac.meridian_transits(self.eph, self.moon, topos))
 
             if len(times) > 0:
                 # Get the first meridian transit (1 = transit, 0 = antitransit)
@@ -319,7 +319,7 @@ class MoonService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
-            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+            alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
             MOON_RADIUS = 16.0 / 60.0
 
@@ -389,7 +389,7 @@ class MoonService:
             logger.error(f"Error calculating moon magnitude: {e}")
             return -12.74
 
-    def _calculate_moonrise_moonset(self, user: User, target_date: date, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, Any]:
+    def _calculate_moonrise_moonset(self, user: User, target_date: date, tz: pytz.tzinfo.BaseTzInfo, weather_data: Dict[str, Any] | None = None) -> Dict[str, Any]:
         try:
             topos = wgs84.latlon(user.latitude, user.longitude) # noqa
 
@@ -402,7 +402,13 @@ class MoonService:
             t0 = self.ts.from_datetime(start_utc)
             t1 = self.ts.from_datetime(end_utc)
 
-            f = almanac.risings_and_settings(self.eph, self.moon, topos, radius_degrees = 16.0/60.0)
+            # Get weather conditions for refraction calculation
+            conditions = get_temp_pressure_conditions(weather_data)
+
+            # Calculate horizon with atmospheric refraction
+            horizon = calculate_horizon_refraction(conditions['temperature_C'], conditions['pressure_mbar'])
+
+            f = almanac.risings_and_settings(self.eph, self.moon, topos, horizon_degrees = horizon, radius_degrees = 16.0/60.0)
 
             f.step_days = 0.001
 

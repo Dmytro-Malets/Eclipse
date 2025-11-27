@@ -4,7 +4,7 @@ from typing import Dict, Any
 from skyfield.api import load, wgs84, utc
 from database.models import User
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_extended_refraction
+from .astro_utils import calculate_apparent_altitude
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +389,7 @@ class SpaceWeatherService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
-            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+            alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
             return alt_apparent_deg < -6.0
 

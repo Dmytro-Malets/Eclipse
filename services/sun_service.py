@@ -6,7 +6,7 @@ from skyfield import almanac
 from database.models import User
 from .uv_service import UVService
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_extended_refraction
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class SunService:
             t1 = self.ts.from_datetime(end_datetime_local.astimezone(utc))
 
             # Get sunrise and sunset
-            rise_set_data = self._calculate_sun_rise_set(topos, t0, t1, tz)
+            rise_set_data = self._calculate_sun_rise_set(topos, t0, t1, tz, weather_data)
             sunrise = rise_set_data['sunrise']
             sunset = rise_set_data['sunset']
 
@@ -157,9 +157,15 @@ class SunService:
             logger.error(f"Error calculating sun times for user {user.user_id}: {e}", exc_info=True)
             return None
 
-    def _calculate_sun_rise_set(self, topos, t0, t1, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, datetime | None]:
+    def _calculate_sun_rise_set(self, topos, t0, t1, tz: pytz.tzinfo.BaseTzInfo, weather_data: Dict[str, Any] | None = None) -> Dict[str, datetime | None]:
         try:
-            f = almanac.risings_and_settings(self.eph, self.sun, topos, radius_degrees = 16.0/60.0)
+            # Get weather conditions for refraction calculation
+            conditions = get_temp_pressure_conditions(weather_data)
+
+            # Calculate horizon with atmospheric refraction
+            horizon = calculate_horizon_refraction(conditions['temperature_C'], conditions['pressure_mbar'])
+
+            f = almanac.risings_and_settings(self.eph, self.sun, topos, horizon_degrees = horizon, radius_degrees = 16.0/60.0)
 
             f.step_days = 0.001
 
@@ -208,7 +214,7 @@ class SunService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
-            alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+            alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
             SUN_RADIUS = 16.0 / 60.0
 

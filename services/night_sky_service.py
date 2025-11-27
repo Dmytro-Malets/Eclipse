@@ -6,7 +6,7 @@ from skyfield.api import load, wgs84, Star
 from skyfield.magnitudelib import planetary_magnitude
 from database.models import User
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_extended_refraction
+from .astro_utils import calculate_apparent_altitude
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +107,7 @@ class NightSkyService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
-            apparent_alt_deg = calculate_extended_refraction(geom_alt.degrees, temp_c, pressure)
+            apparent_alt_deg = calculate_apparent_altitude(geom_alt.degrees, temp_c, pressure)
 
             if name in ('Sun', 'Moon'):
                 is_visible = apparent_alt_deg > -(16.0 / 60.0)
@@ -252,7 +252,7 @@ class NightSkyService:
                 apparent = observer.at(t).observe(star).apparent()
                 alt_geometric, az, _ = apparent.altaz()
 
-                alt_apparent_deg = calculate_extended_refraction(alt_geometric.degrees, temp_c, pressure)
+                alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
                 if alt_apparent_deg > 0.0:
                     is_variable = star_data.get('variable', False)

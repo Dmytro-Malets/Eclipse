@@ -1,8 +1,12 @@
 import numpy as np
+from skyfield.earthlib import refraction
 
-def calculate_extended_refraction(geom_alt_deg: float, temp_c: float, pressure_mbar: float) -> float:
+def calculate_apparent_altitude(geom_alt_deg: float, temp_c: float, pressure_mbar: float) -> float:
     """
-    Calculates atmospheric refraction with smooth cosine fade logic
+    Calculate apparent altitude from geometric altitude accounting for atmospheric refraction.
+
+    Applies Bennett's refraction formula with smooth cosine damping near the horizon
+    to avoid discontinuities in altitude progression.
 
     Range behavior:
       > 89.9°       : No refraction (near zenith, negligible effect).
@@ -54,3 +58,8 @@ def calculate_extended_refraction(geom_alt_deg: float, temp_c: float, pressure_m
             break
 
     return alt
+
+def calculate_horizon_refraction(temp_c: float, pressure_mbar: float) -> float:
+    """Calculate horizon refraction for Skyfield risings_and_settings"""
+    apparent_at_zero = refraction(0.0, temp_c, pressure_mbar)
+    return -apparent_at_zero
