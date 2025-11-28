@@ -67,14 +67,14 @@ async def show_space_data(message: Message, user: User = None):
         )
 
 def create_space_keyboard(user: User = None) -> InlineKeyboardMarkup:
-    buttons = []
-
-    buttons.append([
-        InlineKeyboardButton(
-            text="🔄 Refresh Data",
-            callback_data=f"astro_refresh:{user.user_id if user else 0}"
-        )
-    ])
+    buttons = [
+        [
+            InlineKeyboardButton(
+                text="🔄 Refresh Data",
+                callback_data=f"astro_refresh:{user.user_id if user else 0}"
+            )
+        ]
+    ]
 
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 

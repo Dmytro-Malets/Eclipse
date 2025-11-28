@@ -168,7 +168,8 @@ class NASAAstronomyService:
         try:
             user_date = self._get_user_date(user) if user and user.has_location else date.today()
             header = f"<b>🪐 Space Today • {user_date.strftime('%B %d, %Y')}</b>\n\n"
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Error formatting date header: {e}")
             header = f"<b>🪐 Space Today • {date.today().strftime('%B %d, %Y')}</b>\n\n"
 
         message = header
