@@ -52,7 +52,8 @@ class MarsRoverService:
             return None
 
         try:
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=60)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url) as response:
                     if response.status != 200:
                         logger.error(f"Failed to get rover photos: {response.status} from {url}")
@@ -185,39 +186,9 @@ class MarsRoverService:
 
         return {'photos': formatted_photos, 'max_sol': max_sol, 'total_available': data.get('total_images', 0)}
 
-    async def get_available_rovers(self) -> List[Dict[str, Any]]:
-        active_rovers = []
-        try:
-            async with aiohttp.ClientSession() as session:
-                # Curiosity
-                try:
-                    curiosity_url = self.rover_api_urls['curiosity'].replace("per_page=100", "per_page=1")
-                    async with session.get(curiosity_url) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            if data.get('items'):
-                                active_rovers.append({'name': 'Curiosity'})
-                except Exception as e:
-                    logger.error(f"Failed to fetch Curiosity info for get_available_rovers: {e}")
-                # Perseverance
-                try:
-                    perseverance_url = self.rover_api_urls['perseverance'].replace("num=100", "num=1")
-                    async with session.get(perseverance_url) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            if data.get('images'):
-                                active_rovers.append({'name': 'Perseverance'})
-                except Exception as e:
-                    logger.error(f"Failed to fetch Perseverance info for get_available_rovers: {e}")
-
-                if active_rovers:
-                    return active_rovers
-
-        except Exception as e:
-            logger.error(f"Error fetching available rovers: {e}")
-
-        # Fallback - return a static list
-        return [{'name': 'Perseverance'}, {'name': 'Curiosity'}]
+    @staticmethod
+    async def get_available_rovers() -> List[Dict[str, Any]]:
+        return [{'name': 'Curiosity'}, {'name': 'Perseverance'}]
 
     @staticmethod
     def _parse_title(title: str) -> str:
