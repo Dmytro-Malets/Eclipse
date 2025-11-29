@@ -5,6 +5,8 @@ from pathlib import Path
 from skyfield.api import load, wgs84
 from skyfield import eclipselib
 from database.models import User
+from .weather_api_service import get_temp_pressure_conditions
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -242,6 +244,14 @@ class EclipseService:
             tz = pytz.timezone(user.timezone)
             observer = self.earth + wgs84.latlon(user.latitude, user.longitude)
 
+            # Extract standard (default) atmospheric conditions for refraction calculation
+            conditions = get_temp_pressure_conditions(None)
+            temp_c = conditions['temperature_C']
+            pressure = conditions['pressure_mbar']
+
+            # Calculate the geometric horizon threshold
+            horizon_refraction_threshold = calculate_horizon_refraction(temp_c, pressure)
+
             for i in range(len(t)):
                 umbral_magnitude = details['umbral_magnitude'][i]
                 penumbral_magnitude = details['penumbral_magnitude'][i]
@@ -250,13 +260,14 @@ class EclipseService:
                 peak_time = t[i]
                 peak_time_local = peak_time.astimezone(tz)
                 moon_obs = observer.at(peak_time).observe(self.moon).apparent()
+                geom_alt, az, _ = moon_obs.altaz()
 
-                # Use Skyfield's standard atmospheric refraction (10°C, 1010 mbar)
-                alt, az, _ = moon_obs.altaz(temperature_C='standard')
+                # Calculate accurate apparent altitude
+                alt_apparent_deg = calculate_apparent_altitude(geom_alt.degrees, temp_c, pressure)
 
                 MOON_RADIUS = 16.0 / 60.0
 
-                is_visible = alt.degrees > -MOON_RADIUS
+                is_visible = geom_alt.degrees > horizon_refraction_threshold - MOON_RADIUS
 
                 eclipses.append({
                     'eclipse_type': eclipse_type,
@@ -266,7 +277,7 @@ class EclipseService:
                     'is_visible': is_visible,
                     'umbral_magnitude': round(umbral_magnitude, 3),
                     'penumbral_magnitude': round(penumbral_magnitude, 3),
-                    'altitude': round(alt.degrees, 1) if is_visible else None,
+                    'altitude': round(alt_apparent_deg, 1) if is_visible else None,
                     'azimuth': round(az.degrees, 1) if is_visible else None
                 })
 

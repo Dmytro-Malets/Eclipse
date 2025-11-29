@@ -214,14 +214,20 @@ class SunService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
+            # Calculate accurate apparent altitude
             alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
+            # Calculate the geometric horizon threshold
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+
             SUN_RADIUS = 16.0 / 60.0
+            # Geometric altitude threshold for the event
+            geometric_alt_threshold = horizon_refraction_standard - SUN_RADIUS
 
             return {
                 'altitude': round(alt_apparent_deg, 1),
                 'azimuth': round(az.degrees, 1),
-                'is_up': alt_apparent_deg > -SUN_RADIUS
+                'is_up': alt_geometric.degrees > geometric_alt_threshold
             }
         except Exception as e:
             logger.error(f"Error getting sun position: {e}")

@@ -6,7 +6,7 @@ from skyfield.api import load, wgs84, Star
 from skyfield.magnitudelib import planetary_magnitude
 from database.models import User
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_apparent_altitude
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class NightSkyService:
             moon_data = self._get_celestial_position(observer, t, self.moon, 'Moon', weather_data)
 
             # Check if it's nighttime
-            is_night = sun_data['altitude'] < -6.0
+            is_dark_enough = sun_data['altitude'] < -6.0
 
             # Get visible planets
             visible_planets = self._get_visible_planets(observer, t, weather_data)
@@ -81,7 +81,7 @@ class NightSkyService:
                 'time': target_datetime.strftime('%H:%M:%S'),
                 'date_formatted': target_date.strftime('%A, %B %d, %Y'),
                 'current_time': now.strftime('%H:%M:%S') if target_date == user_today else None,
-                'is_night': is_night,
+                'is_dark_enough': is_dark_enough,
                 'sun': sun_data,
                 'moon': moon_data,
                 'planets': visible_planets,
@@ -107,12 +107,18 @@ class NightSkyService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
+            # Calculate accurate apparent altitude
             apparent_alt_deg = calculate_apparent_altitude(geom_alt.degrees, temp_c, pressure)
 
+            # Calculate the geometric horizon threshold
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+
+            SUN_MOON_RADIUS = 16.0 / 60.0
+
             if name in ('Sun', 'Moon'):
-                is_visible = apparent_alt_deg > -(16.0 / 60.0)
+                is_visible = geom_alt.degrees > horizon_refraction_standard - SUN_MOON_RADIUS
             else:
-                is_visible = apparent_alt_deg > 0.0
+                is_visible = geom_alt.degrees > horizon_refraction_standard
 
             return {
                 'name': name,
@@ -247,14 +253,18 @@ class NightSkyService:
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
 
+            # Calculate the geometric horizon threshold
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+
             for star_data in notable_stars:
                 star = Star(ra_hours=star_data['ra_hours'], dec_degrees=star_data['dec_degrees'])
                 apparent = observer.at(t).observe(star).apparent()
                 alt_geometric, az, _ = apparent.altaz()
 
+                # Calculate accurate apparent altitude
                 alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
-                if alt_apparent_deg > 0.0:
+                if alt_geometric.degrees > horizon_refraction_standard:
                     is_variable = star_data.get('variable', False)
                     variation = star_data.get('variation', None)
 
@@ -358,7 +368,7 @@ class NightSkyService:
             message += "<b>✨ Stars:</b> Not visible from current location\n\n"
 
         # Viewing tips
-        if sky_data['is_night']:
+        if sky_data['is_dark_enough']:
             message += "<i>💡 Find a dark location away from city lights for best viewing</i>"
         else:
             message += "<i>💡 Wait for nighttime for optimal stargazing conditions</i>"
