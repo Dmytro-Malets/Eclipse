@@ -103,15 +103,17 @@ class NightSkyService:
             geom_alt, az, distance = apparent.altaz()
 
             # Extract weather conditions
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions, conditions_def = get_temp_pressure_conditions(weather_data), get_temp_pressure_conditions(None)
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
+            temp_c_def = conditions_def['temperature_C']
+            pressure_def = conditions_def['pressure_mbar']
 
             # Calculate accurate apparent altitude
             apparent_alt_deg = calculate_apparent_altitude(geom_alt.degrees, temp_c, pressure)
 
             # Calculate the geometric horizon threshold
-            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c_def, pressure_def)
 
             SUN_MOON_RADIUS = 16.0 / 60.0
 
@@ -249,12 +251,14 @@ class NightSkyService:
             visible_stars = []
 
             # Extract weather conditions
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions, conditions_def = get_temp_pressure_conditions(weather_data), get_temp_pressure_conditions(None)
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
+            temp_c_def = conditions_def['temperature_C']
+            pressure_def = conditions_def['pressure_mbar']
 
             # Calculate the geometric horizon threshold
-            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c_def, pressure_def)
 
             for star_data in notable_stars:
                 star = Star(ra_hours=star_data['ra_hours'], dec_degrees=star_data['dec_degrees'])

@@ -78,7 +78,7 @@ class MoonService:
             magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
 
             # Get moonrise and moonset times
-            moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz, weather_data)
+            moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz)
 
             # Get Moon's altitude to determine the best method for zenith angle calculation
             moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
@@ -315,15 +315,17 @@ class MoonService:
             alt_geometric, az, _ = moon_obs.altaz()
 
             # Extract weather conditions
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions, conditions_def = get_temp_pressure_conditions(weather_data), get_temp_pressure_conditions(None)
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
+            temp_c_def = conditions_def['temperature_C']
+            pressure_def = conditions_def['pressure_mbar']
 
             # Calculate accurate apparent altitude
             alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
             # Calculate the geometric horizon threshold
-            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c_def, pressure_def)
 
             MOON_RADIUS = 16.0 / 60.0
             # Geometric altitude threshold for the event
@@ -395,7 +397,7 @@ class MoonService:
             logger.error(f"Error calculating moon magnitude: {e}")
             return -12.74
 
-    def _calculate_moonrise_moonset(self, user: User, target_date: date, tz: pytz.tzinfo.BaseTzInfo, weather_data: Dict[str, Any] | None = None) -> Dict[str, Any]:
+    def _calculate_moonrise_moonset(self, user: User, target_date: date, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, Any]:
         try:
             topos = wgs84.latlon(user.latitude, user.longitude) # noqa
 
@@ -409,10 +411,10 @@ class MoonService:
             t1 = self.ts.from_datetime(end_utc)
 
             # Get weather conditions for refraction calculation
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions_def = get_temp_pressure_conditions(None)
 
             # Calculate horizon with atmospheric refraction
-            horizon = calculate_horizon_refraction(conditions['temperature_C'], conditions['pressure_mbar'])
+            horizon = calculate_horizon_refraction(conditions_def['temperature_C'], conditions_def['pressure_mbar'])
 
             f = almanac.risings_and_settings(self.eph, self.moon, topos, horizon_degrees = horizon, radius_degrees = 16.0/60.0)
 

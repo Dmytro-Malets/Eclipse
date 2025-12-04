@@ -50,7 +50,7 @@ class SunService:
             t1 = self.ts.from_datetime(end_datetime_local.astimezone(utc))
 
             # Get sunrise and sunset
-            rise_set_data = self._calculate_sun_rise_set(topos, t0, t1, tz, weather_data)
+            rise_set_data = self._calculate_sun_rise_set(topos, t0, t1, tz)
             sunrise = rise_set_data['sunrise']
             sunset = rise_set_data['sunset']
 
@@ -157,13 +157,13 @@ class SunService:
             logger.error(f"Error calculating sun times for user {user.user_id}: {e}", exc_info=True)
             return None
 
-    def _calculate_sun_rise_set(self, topos, t0, t1, tz: pytz.tzinfo.BaseTzInfo, weather_data: Dict[str, Any] | None = None) -> Dict[str, datetime | None]:
+    def _calculate_sun_rise_set(self, topos, t0, t1, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, datetime | None]:
         try:
             # Get weather conditions for refraction calculation
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions_def = get_temp_pressure_conditions(None)
 
             # Calculate horizon with atmospheric refraction
-            horizon = calculate_horizon_refraction(conditions['temperature_C'], conditions['pressure_mbar'])
+            horizon = calculate_horizon_refraction(conditions_def['temperature_C'], conditions_def['pressure_mbar'])
 
             f = almanac.risings_and_settings(self.eph, self.sun, topos, horizon_degrees = horizon, radius_degrees = 16.0/60.0)
 
@@ -210,15 +210,17 @@ class SunService:
             alt_geometric, az, _ = sun_obs.altaz()
 
             # Extract weather conditions
-            conditions = get_temp_pressure_conditions(weather_data)
+            conditions, conditions_def = get_temp_pressure_conditions(weather_data), get_temp_pressure_conditions(None)
             temp_c = conditions['temperature_C']
             pressure = conditions['pressure_mbar']
+            temp_c_def = conditions_def['temperature_C']
+            pressure_def = conditions_def['pressure_mbar']
 
             # Calculate accurate apparent altitude
             alt_apparent_deg = calculate_apparent_altitude(alt_geometric.degrees, temp_c, pressure)
 
             # Calculate the geometric horizon threshold
-            horizon_refraction_standard = calculate_horizon_refraction(temp_c, pressure)
+            horizon_refraction_standard = calculate_horizon_refraction(temp_c_def, pressure_def)
 
             SUN_RADIUS = 16.0 / 60.0
             # Geometric altitude threshold for the event
