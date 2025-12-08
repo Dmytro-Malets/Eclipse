@@ -60,6 +60,6 @@ def calculate_apparent_altitude(geom_alt_deg: float, temp_c: float, pressure_mba
     return alt
 
 def calculate_horizon_refraction(temp_c: float, pressure_mbar: float) -> float:
-    """Calculate horizon refraction for Skyfield risings_and_settings"""
+    """Calculate geometric horizon threshold accounting for atmospheric refraction"""
     apparent_at_zero = refraction(0.0, temp_c, pressure_mbar)
     return -apparent_at_zero
