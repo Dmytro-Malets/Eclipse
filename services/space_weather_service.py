@@ -72,19 +72,22 @@ class SpaceWeatherService:
 
                     data = await response.json()
 
-                    # Skip header row
-                    if len(data) < 2:
+                    if not data:
                         return None
 
-                    # Get the most recent Kp value
+                    # Accessing the last element to get the most recent measurement
                     latest = data[-1]
-                    kp_value = float(latest[1])
-                    time_tag = latest[0]
+                    kp_value = float(latest['Kp'])
+                    time_tag = latest['time_tag']
 
                     try:
-                        time_obj = datetime.strptime(time_tag, "%Y-%m-%d %H:%M:%S.%f")
+                        time_obj = datetime.fromisoformat(time_tag)
                     except ValueError:
-                        time_obj = datetime.strptime(time_tag, "%Y-%m-%d %H:%M:%S")
+                        # Fallback mechanisms for older date formats
+                        try:
+                            time_obj = datetime.strptime(time_tag, "%Y-%m-%d %H:%M:%S.%f")
+                        except ValueError:
+                            time_obj = datetime.strptime(time_tag, "%Y-%m-%d %H:%M:%S")
 
                     # Convert to user timezone
                     time_utc = pytz.utc.localize(time_obj)
