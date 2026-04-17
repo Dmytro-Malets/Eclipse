@@ -1,6 +1,6 @@
 # Eclipse
 
-[![Release](https://img.shields.io/badge/release-v1.8.5-orange)](https://github.com/Dmytro-Malets/Eclipse/releases)
+[![Release](https://img.shields.io/badge/release-v1.8.7-orange)](https://github.com/Dmytro-Malets/Eclipse/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](https://github.com/Dmytro-Malets/Eclipse/blob/main/LICENSE)
 
 **Eclipse** - your personal astronomy assistant in Telegram. The bot provides up-to-date information about celestial objects, space weather, ISS, and much more based on your location.
@@ -186,4 +186,4 @@
    - Development: logs are output to console
    - Production: logs are stored in `/var/log/bot/app.log` with rotation
 
-5. **Ephemeris Files:** On first run, Skyfield will automatically download necessary ephemeris files (e.g., `de421.bsp`). This may take some time.
+5. **Ephemeris Files:** On first run, Skyfield will automatically download necessary ephemeris files (e.g., `de421.bsp`, ~16 MB). This may take some time.
