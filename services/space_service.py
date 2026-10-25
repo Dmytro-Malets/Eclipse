@@ -1,4 +1,4 @@
-import aiohttp, logging, pytz
+import aiohttp, logging, pytz, re
 from datetime import datetime, date
 from typing import Dict, Any, List
 from config.settings import NASA_API_KEY
@@ -15,11 +15,9 @@ class NASAAstronomyService:
             raise NoAPIError(
                 "NASA API key is required. Set NASA_API_KEY environment variable or pass api_key parameter.")
 
-        self.base_url = "https://api.nasa.gov"
-
         self.endpoints = {
-            'apod': f"{self.base_url}/planetary/apod",  # Astronomy Picture of the Day
-            'neo': f"{self.base_url}/neo/rest/v1/feed",  # Near Earth Objects
+            'apod': "https://science.nasa.gov/wp-json/wp/v2/apod-basic",  # Astronomy Picture of the Day
+            'neo': "https://api.nasa.gov/neo/rest/v1/feed",  # Near Earth Objects
         }
 
     async def get_space_data(self, user: User = None) -> List[Dict[str, Any]] | None:
@@ -49,8 +47,7 @@ class NASAAstronomyService:
     async def _get_apod(self, target_date: date) -> Dict[str, Any] | None:
         params = {
             'api_key': self.api_key,
-            'date': target_date.isoformat(),
-            'thumbs': 'true'
+            'date': target_date.isoformat()
         }
 
         try:
@@ -58,18 +55,39 @@ class NASAAstronomyService:
                 async with session.get(self.endpoints['apod'], params=params) as response:
                     if response.status == 200:
                         data = await response.json()
-                        copyright_text = data.get('copyright', 'NASA')
-                        if copyright_text:
-                            copyright_text = copyright_text.replace('\n', ' ').strip()
-                        return {
-                            'title': data.get('title', 'Unknown'),
-                            'explanation': data.get('explanation', ''),
-                            'url': data.get('url', ''),
-                            'media_type': data.get('media_type', 'image'),
-                            'date': data.get('date', ''),
-                            'copyright': copyright_text,
-                            'thumbnail_url': data.get('thumbnail_url')
-                        }
+                        item = data[0] if isinstance(data, list) and data else data
+
+                        if isinstance(item, dict) and item.get('title'):
+                            # Normalize copyright/credit string
+                            copyright_text = item.get('copyright') or item.get('credit', 'NASA')
+                            if copyright_text:
+                                copyright_text = copyright_text.replace('\n', ' ').strip()
+
+                            # Clean up raw explanation HTML (strip tags except <a> links)
+                            raw_explanation = item.get('explanation', '')
+                            clean_text = re.sub(r'^\s*(?:<(?:strong|b)>)?Explanation:?(?:</(?:strong|b)>)?\s*', '', raw_explanation, flags=re.IGNORECASE)
+                            clean_text = re.sub(r'<br\s*/?>', '\n', clean_text, flags=re.IGNORECASE)
+
+                            def keep_links_only(match):
+                                tag = match.group(0)
+                                if re.match(r'^<\s*a\b', tag, re.IGNORECASE) or re.match(r'^<\s*/\s*a\s*>', tag, re.IGNORECASE):
+                                    return tag
+                                return ''
+
+                            clean_explanation = re.sub(r'<[^>]+>', keep_links_only, clean_text).strip()
+
+                            image_url = item.get('hdurl') or item.get('url') or ''
+                            post_url = item.get('permalink') or item.get('url') or ''
+
+                            return {
+                                'title': item.get('title', 'Unknown'),
+                                'explanation': clean_explanation,
+                                'url': image_url,
+                                'permalink': post_url,
+                                'media_type': item.get('media_type', 'image'),
+                                'date': item.get('date', target_date.isoformat()),
+                                'copyright': copyright_text
+                            }
         except Exception as e:
             logger.error(f"Error fetching APOD: {e}")
 
@@ -138,7 +156,7 @@ class NASAAstronomyService:
         return date.today()
 
     @staticmethod
-    def _truncate_with_link(text: str, max_length: int = 350, full_url: str = None) -> str:
+    def _truncate_with_link(text: str, max_length: int = 420, full_url: str = None) -> str:
         if len(text) <= max_length:
             return text
 
@@ -155,12 +173,29 @@ class NASAAstronomyService:
                     truncate_point = i
                     break
 
-        truncated = text[:truncate_point].strip() + "..."
+        truncated = text[:truncate_point]
+
+        # Prevent breaking inside an unclosed HTML tag (< ... >)
+        last_lt = truncated.rfind('<')
+        last_gt = truncated.rfind('>')
+        if last_lt > last_gt:
+            truncated = truncated[:last_lt]
+
+        # Check and fix <a> tag balance to prevent Telegram parsing errors
+        open_tags = list(re.finditer(r'<\s*a\b[^>]*>', truncated, flags=re.IGNORECASE))
+        close_tags = list(re.finditer(r'<\s*/\s*a\s*>', truncated, flags=re.IGNORECASE))
+
+        if len(open_tags) > len(close_tags):
+            last_open = open_tags[-1]
+            truncated = truncated[:last_open.start()]
+
+        truncated = truncated.strip()
+        result = truncated + "..."
 
         if full_url:
-            truncated += f" <a href='{full_url}'>Read more</a>"
+            result += f" <a href='{full_url}'>Read more</a>"
 
-        return truncated
+        return result
 
     def format_space_message(self, space_data: List[Dict[str, Any]], user: User = None) -> str:
         if not space_data:
@@ -195,11 +230,11 @@ class NASAAstronomyService:
                 explanation = data.get('explanation', '')
 
                 # Create link to NASA APOD page for full text
-                apod_web_url = f"https://apod.nasa.gov/apod/ap{data.get('date', '').replace('-', '')[2:]}.html" if data.get('date') else None
+                apod_web_url = data.get('permalink')
 
                 # Truncate with link to full NASA page
                 if explanation:
-                    truncated_explanation = self._truncate_with_link(explanation, 350, apod_web_url)
+                    truncated_explanation = self._truncate_with_link(explanation, 420, apod_web_url)
                     message += f"<b>Description:</b> {truncated_explanation}\n"
 
             elif item_type == 'neo':
