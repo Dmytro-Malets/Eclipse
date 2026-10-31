@@ -174,20 +174,20 @@ class MoonService:
             target_utc = target_datetime.astimezone(utc)
             t = self.ts.from_datetime(target_utc)
 
-            # Calculate geocentric phase angle (the Sun-Earth-Moon angle)
-            phase_angle_rad = self._get_phase_angle_at_time(t)
+            # Geocentric apparent position of the Moon
+            moon_apparent = self.earth.at(t).observe(self.moon).apparent()
+            # True phase angle (Sun-Moon-Earth): 0° = full Moon, 180° = new Moon
+            phase_angle = float(moon_apparent.phase_angle(self.sun).degrees)
 
             # Get ecliptic longitude angle. This determines the waxing/waning phase based on Moon's position in orbit
-            longitude_phase_angle = almanac.moon_phase(self.eph, t)
-            is_waxing = longitude_phase_angle.degrees < 180.0
+            moon_sun_longitude_diff = almanac.moon_phase(self.eph, t)
+            is_waxing = moon_sun_longitude_diff.degrees < 180.0
 
-            # When angle = 0° (sun and moon in the same direction) = New Moon = 0% illumination
-            # When angle = 180° (opposite directions) = Full Moon = 100% illumination
-            illumination = (1 - np.cos(phase_angle_rad)) / 2 * 100
+            # Illuminated fraction of the lunar disc: 0% at new Moon, 100% at full Moon
+            illumination = float(moon_apparent.fraction_illuminated(self.sun)) * 100
             moon_age = self._calculate_moon_age(t)
             illumination_rounded = round(illumination, 1)
             phase_name = self._get_phase_name(illumination_rounded, is_waxing)
-            phase_angle = np.degrees(phase_angle_rad)
 
             return {
                 'phase_name': phase_name,
@@ -202,27 +202,10 @@ class MoonService:
             return {
                 'phase_name': 'Unknown',
                 'illumination': 0,
-                'phase_angle': 0,
+                'phase_angle': 180,
                 'age_days': 0,
                 'is_waxing': True
             }
-
-    def _get_phase_angle_at_time(self, t) -> float:
-        # Get positions relative to the geocentric
-        sun_pos = self.earth.at(t).observe(self.sun).position.km
-        moon_pos = self.earth.at(t).observe(self.moon).position.km
-
-        # Vectors from Earth to the Sun and Moon
-        sun_vec = sun_pos / np.linalg.norm(sun_pos)
-        moon_vec = moon_pos / np.linalg.norm(moon_pos)
-
-        # Phase angle between vectors
-        cos_angle = np.dot(sun_vec, moon_vec)
-
-        # Limit values to avoid rounding errors
-        cos_angle = np.clip(cos_angle, -1.0, 1.0)
-
-        return np.arccos(cos_angle)
 
     def _find_major_phase_on_date(self, target_date: date, tz: pytz.tzinfo.BaseTzInfo) -> Dict[str, Any] | None:
         try:
@@ -268,7 +251,7 @@ class MoonService:
             # Finding the last new moon
             ts = self.ts
             eph = self.eph
-            # Looking for a new moon within ±40 days
+            # Search window: 40 days back to 10 days ahead
             t_start = ts.tt_jd(t.tt - 40)
             t_end = ts.tt_jd(t.tt + 10)
 
@@ -363,8 +346,8 @@ class MoonService:
 
     def _calculate_moon_magnitude(self, target_datetime: datetime, phase_angle_deg: float) -> float:
         try:
-            # Convert to selenocentric elongation (0° = full moon, 180° = new moon)
-            alpha_deg = 180.0 - phase_angle_deg
+            # Phase angle alpha: 0° = full Moon, 180° = new Moon
+            alpha_deg = phase_angle_deg
 
             # Calculate geocentric distance
             target_utc = target_datetime.astimezone(utc)
@@ -383,7 +366,7 @@ class MoonService:
             # Base magnitude for full moon at mean distance
             base_magnitude = -12.74
 
-            # Phase correction formula from Astronomical Almanac
+            # Empirical phase correction formula for lunar magnitude
             # Linear term (0.026|α|) accounts for basic phase effect
             # Quartic term (4×10^-9 α^4) accounts for opposition surge near full moon
             phase_correction = 0.026 * abs(alpha_deg) + 4.0e-9 * (alpha_deg ** 4)
@@ -484,7 +467,7 @@ class MoonService:
             position_angle_rad = np.arctan2(y, x)
             pa_sun_deg = np.degrees(position_angle_rad)  # Angle from zenith to the Sun
 
-            # The bright limb is 90 degrees from the Sun's direction
+            # +90°: the angle is measured from "up", while the drawn lit side faces +X
             bright_limb_angle_deg = pa_sun_deg + 90.0
 
             # Normalize to [0, 360) range to match API conventions
@@ -518,8 +501,7 @@ class MoonService:
             position_angle_rad = np.arctan2(y, x)
             pa_sun_deg = np.degrees(position_angle_rad)
 
-            # Position Angle of Bright Limb = PA of Sun + 90°
-            # (the bright limb is perpendicular to the Sun's direction)
+            # +90°: the angle is measured from "up", while the drawn lit side faces +X
             bright_limb_angle_deg = pa_sun_deg + 90.0
 
             # Normalize to (-180, 180] range
@@ -543,7 +525,7 @@ class MoonService:
             moon_obs = observer.at(t).observe(self.moon).apparent()
 
             # Get Right Ascension and Declination
-            ra, dec, _ = moon_obs.radec()
+            ra, dec, _ = moon_obs.radec(epoch='date')
 
             # Get observer's latitude in radians from the user object
             lat_rad = np.radians(user.latitude)
