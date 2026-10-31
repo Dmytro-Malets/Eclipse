@@ -6,7 +6,7 @@ from skyfield import almanac
 from database.models import User
 from .uv_service import UVService
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction, round_to_second
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class SunService:
             sunset_time = None
 
             for time_obj, event in zip(times, events):
-                time_local = time_obj.utc_datetime().replace(tzinfo=utc).astimezone(tz)
+                time_local = round_to_second(time_obj.utc_datetime().replace(tzinfo=utc).astimezone(tz))
                 if event == 1 and sunrise_time is None:  # 1 = Rise
                     sunrise_time = time_local
                 elif event == 0 and sunset_time is None:  # 0 = Set
@@ -194,7 +194,7 @@ class SunService:
 
             for time_obj, event in zip(times, events):
                 if event == 1:  # 1 = Meridian transit
-                    time_local = time_obj.utc_datetime().replace(tzinfo=utc).astimezone(tz)
+                    time_local = round_to_second(time_obj.utc_datetime().replace(tzinfo=utc).astimezone(tz))
                     return time_local
 
             return None

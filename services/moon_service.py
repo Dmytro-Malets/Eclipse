@@ -10,7 +10,7 @@ from skyfield.api import load, wgs84, utc
 from skyfield import almanac
 from database.models import User
 from .weather_api_service import weather_api_service, get_temp_pressure_conditions
-from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction
+from .astro_utils import calculate_apparent_altitude, calculate_horizon_refraction, round_to_second
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ class MoonService:
                     # Get the first transit time
                     transit_time_utc = times[transit_indices[0]].utc_datetime()
                     # Convert back to user's timezone
-                    transit_time_local = transit_time_utc.replace(tzinfo=utc).astimezone(tz)
+                    transit_time_local = round_to_second(transit_time_utc.replace(tzinfo=utc).astimezone(tz))
                     # Return just the time component
                     return transit_time_local.time()
 
@@ -241,7 +241,7 @@ class MoonService:
                 # Get the first phase occurrence in this day
                 phase_time_utc = times[0].utc_datetime()
                 # Convert back to user's local timezone
-                phase_time_local = phase_time_utc.replace(tzinfo=utc).astimezone(tz)
+                phase_time_local = round_to_second(phase_time_utc.replace(tzinfo=utc).astimezone(tz))
                 phase_code = int(phases[0])
 
                 # Map phase codes to display names
@@ -426,7 +426,7 @@ class MoonService:
             events_list = []
             for time_obj, event in zip(times, events):
                 time_utc = time_obj.utc_datetime()
-                time_local = time_utc.replace(tzinfo=utc).astimezone(tz)
+                time_local = round_to_second(time_utc.replace(tzinfo=utc).astimezone(tz))
                 events_list.append({
                     'type': 'rise' if event == 1 else 'set',
                     'time': time_local.time(),

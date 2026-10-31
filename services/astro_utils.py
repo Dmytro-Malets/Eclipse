@@ -1,4 +1,5 @@
 import numpy as np
+from datetime import datetime, timedelta
 from skyfield.earthlib import refraction
 
 def calculate_apparent_altitude(geom_alt_deg: float, temp_c: float, pressure_mbar: float) -> float:
@@ -63,3 +64,7 @@ def calculate_horizon_refraction(temp_c: float, pressure_mbar: float) -> float:
     """Calculate geometric horizon threshold accounting for atmospheric refraction"""
     apparent_at_zero = refraction(0.0, temp_c, pressure_mbar)
     return -apparent_at_zero
+
+def round_to_second(dt: datetime) -> datetime:
+    """Round datetime to the nearest whole second"""
+    return (dt + timedelta(microseconds=500_000)).replace(microsecond=0)
