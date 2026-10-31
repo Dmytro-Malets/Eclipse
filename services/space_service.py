@@ -77,6 +77,8 @@ class NASAAstronomyService:
                             clean_explanation = re.sub(r'<[^>]+>', keep_links_only, clean_text).strip()
 
                             image_url = item.get('hdurl') or item.get('url') or ''
+                            if image_url:
+                                image_url = image_url.split('?')[0]
                             post_url = item.get('permalink') or item.get('url') or ''
 
                             return {

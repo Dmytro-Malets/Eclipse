@@ -41,13 +41,7 @@ async def show_space_data(message: Message, user: User = None):
         keyboard = create_space_keyboard(user)
 
         is_image = apod_data and apod_data.get('media_type') == 'image'
-        is_video = apod_data and apod_data.get('media_type') == 'video'
-        media_url = None
-
-        if is_image:
-            media_url = apod_data.get('url')
-        elif is_video and apod_data.get('thumbnail_url'):
-            media_url = apod_data.get('thumbnail_url')
+        media_url = apod_data.get('url') if is_image else None
 
         if media_url:
             try:
@@ -106,13 +100,7 @@ async def space_refresh_callback(callback: CallbackQuery, user: User = None):
 
         try:
             is_new_image = apod_data and apod_data.get('media_type') == 'image'
-            is_new_video = apod_data and apod_data.get('media_type') == 'video'
-            new_media_url = None
-
-            if is_new_image:
-                new_media_url = apod_data['url']
-            elif is_new_video and apod_data.get('thumbnail_url'):
-                new_media_url = apod_data['thumbnail_url']
+            new_media_url = apod_data.get('url') if is_new_image else None
 
             has_old_photo = bool(callback.message.photo)
 
@@ -121,16 +109,18 @@ async def space_refresh_callback(callback: CallbackQuery, user: User = None):
                     media=InputMediaPhoto(media=new_media_url, caption=formatted_message),
                     reply_markup=keyboard
                 )
-            elif has_old_photo and not new_media_url:
-                chat_id = callback.message.chat.id
-                await callback.message.delete()
-                await callback.bot.send_message(chat_id=chat_id, text=formatted_message, reply_markup=keyboard, disable_web_page_preview=False)
-            elif not has_old_photo and new_media_url:
-                chat_id = callback.message.chat.id
-                await callback.message.delete()
-                await callback.bot.send_photo(chat_id=chat_id, photo=new_media_url, caption=formatted_message, reply_markup=keyboard)
-            else:
+            elif not has_old_photo and not new_media_url:
                 await callback.message.edit_text(text=formatted_message, reply_markup=keyboard, disable_web_page_preview=False)
+            else:
+                chat_id = callback.message.chat.id
+                try:
+                    await callback.message.delete()
+                except Exception:
+                    pass
+                if new_media_url:
+                    await callback.bot.send_photo(chat_id=chat_id, photo=new_media_url, caption=formatted_message, reply_markup=keyboard)
+                else:
+                    await callback.bot.send_message(chat_id=chat_id, text=formatted_message, reply_markup=keyboard, disable_web_page_preview=False)
 
         except Exception as e:
             if "message is not modified" in str(e).lower():
