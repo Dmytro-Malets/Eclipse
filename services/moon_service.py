@@ -369,8 +369,8 @@ class MoonService:
             base_magnitude = -12.74
 
             # Empirical phase correction formula for lunar magnitude
-            # Linear term (0.026|α|) accounts for basic phase effect
-            # Quartic term (4×10^-9 α^4) accounts for opposition surge near full moon
+            # Linear term (0.026|α|) accounts for the basic dimming with phase angle
+            # Quartic term (4×10^-9 α^4) accounts for the steep dimming at large phase angles
             phase_correction = 0.026 * abs(alpha_deg) + 4.0e-9 * (alpha_deg ** 4)
 
             # Final apparent magnitude
