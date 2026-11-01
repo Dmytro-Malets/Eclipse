@@ -419,17 +419,17 @@ class SpaceWeatherService:
         if kp < 4:
             return "Quiet"
         elif kp < 5:
-            return "Unsettled"
-        elif kp < 6:
             return "Active"
-        elif kp < 7:
+        elif kp < 6:
             return "Minor Storm (G1)"
-        elif kp < 8:
+        elif kp < 7:
             return "Moderate Storm (G2)"
-        elif kp < 9:
+        elif kp < 8:
             return "Strong Storm (G3)"
+        elif kp < 9:
+            return "Severe Storm (G4)"
         else:
-            return "Severe Storm (G4-G5)"
+            return "Extreme Storm (G5)"
 
     @staticmethod
     def get_haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

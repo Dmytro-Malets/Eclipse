@@ -331,8 +331,10 @@ class MoonService:
 
             moon = self.moon
             moon_obs = observer.at(t).observe(moon)
-            distance_km = moon_obs.distance().km
+            distance_to_center_km = moon_obs.distance().km
 
+            MOON_MEAN_RADIUS_KM = 1737.4
+            distance_km = distance_to_center_km - MOON_MEAN_RADIUS_KM
             distance_miles = distance_km * 0.621371
 
             return {
@@ -677,7 +679,7 @@ class MoonService:
         trend = "Waxing" if phase.get('is_waxing', True) else "Waning"
         message += f"<b>Trend:</b> {trend}\n\n"
 
-        message += f"<b>Distance from you:</b>\n"
+        message += f"<b>Distance to the Moon's surface:</b>\n"
         message += f"• {distance['km']:,.0f} km\n".replace(',', ' ')
         message += f"• {distance['miles']:,.0f} miles".replace(',', ' ')
 
