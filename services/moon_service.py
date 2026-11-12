@@ -80,27 +80,20 @@ class MoonService:
             # Get moonrise and moonset times
             moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz)
 
-            # Get Moon's altitude to determine the best method for zenith angle calculation
-            moon_altitude = moon_pos_data['altitude'] if moon_pos_data else -90.0
+            # Position angle of the Moon's bright limb, measured from celestial north
+            bright_limb_position_angle = self._calculate_bright_limb_position_angle(target_datetime)
 
-            if moon_altitude > 60.0 or moon_altitude < -60.0:
-                # High Altitude: Use the stable Alt/Az horizontal coordinate method
-                moon_zenith_angle = self._calculate_zenith_angle_of_bright_limb(observer, target_datetime)
-            else:
-                # Low/Moderate Altitude: Use the precise RA/Dec equatorial coordinate method
-                # Calculate Position Angle of the Moon's Bright Limb
-                pa_bright_limb = self._calculate_bright_limb_position_angle(target_datetime)
+            # Parallactic angle: angle at the Moon between celestial north and the zenith
+            parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
 
-                # Calculate Parallactic Angle
-                parallactic_angle = self._calculate_parallactic_angle(observer, user, target_datetime)
-
-                moon_zenith_angle = pa_bright_limb - parallactic_angle
+            # Position angle of the bright limb measured from the observer's zenith
+            bright_limb_zenith_angle = bright_limb_position_angle - parallactic_angle
 
             # Retrieve the loop instance for CPU-bound task offloading
             loop = asyncio.get_running_loop()
 
             # Generate moon phase image
-            moon_image = await loop.run_in_executor(None, self._generate_moon_image, moon_phase['illumination'], moon_zenith_angle)
+            moon_image = await loop.run_in_executor(None, self._generate_moon_image, moon_phase['illumination'], bright_limb_zenith_angle)
 
             # Assign the pre-calculated position data only if the target date is today
             current_position = moon_pos_data if target_date == user_today else None
@@ -440,55 +433,14 @@ class MoonService:
             logger.error(f"Error calculating moonrise/moonset: {e}")
             return {'moonrise': None, 'moonset': None, 'events_order': []}
 
-    def _calculate_zenith_angle_of_bright_limb(self, observer, target_datetime: datetime) -> float:
-        try:
-            target_utc = target_datetime.astimezone(utc)
-            t = self.ts.from_datetime(target_utc)
-
-            # Get horizontal coordinates (Alt/Az) for the Moon
-            moon_obs = observer.at(t).observe(self.moon).apparent()
-            alt_moon, az_moon, _ = moon_obs.altaz()
-
-            # Get horizontal coordinates (Alt/Az) for the Sun
-            sun_obs = observer.at(t).observe(self.sun).apparent()
-            alt_sun, az_sun, _ = sun_obs.altaz()
-
-            # Convert to radians
-            alt_moon_rad = alt_moon.radians
-            az_moon_rad = az_moon.radians
-            alt_sun_rad = alt_sun.radians
-            az_sun_rad = az_sun.radians
-
-            # Calculate the Sun's position angle relative to the Moon's zenith-direction.
-            # This is analogous to the standard RA/Dec position angle formula,
-            # but computed in the horizontal (Alt/Az) coordinate frame.
-            y = np.cos(alt_sun_rad) * np.sin(az_moon_rad - az_sun_rad)
-            x = np.cos(alt_moon_rad) * np.sin(alt_sun_rad) - \
-                np.sin(alt_moon_rad) * np.cos(alt_sun_rad) * np.cos(az_moon_rad - az_sun_rad)
-
-            position_angle_rad = np.arctan2(y, x)
-            pa_sun_deg = np.degrees(position_angle_rad)  # Angle from zenith to the Sun
-
-            # +90°: the angle is measured from "up", while the drawn lit side faces +X
-            bright_limb_angle_deg = pa_sun_deg + 90.0
-
-            # Normalize to [0, 360) range to match API conventions
-            final_angle = bright_limb_angle_deg % 360
-
-            return final_angle
-
-        except Exception as e:
-            logger.error(f"Error calculating zenith angle of bright limb: {e}", exc_info=True)
-            return 0.0
-
     def _calculate_bright_limb_position_angle(self, target_datetime: datetime) -> float:
         try:
             target_utc = target_datetime.astimezone(utc)
             t = self.ts.from_datetime(target_utc)
 
             # Get apparent geocentric coordinates for Sun and Moon
-            ra_moon, dec_moon, _ = self.earth.at(t).observe(self.moon).apparent().radec()
-            ra_sun, dec_sun, _ = self.earth.at(t).observe(self.sun).apparent().radec()
+            ra_moon, dec_moon, _ = self.earth.at(t).observe(self.moon).apparent().radec(epoch='date')
+            ra_sun, dec_sun, _ = self.earth.at(t).observe(self.sun).apparent().radec(epoch='date')
 
             ra_moon_rad, dec_moon_rad = ra_moon.radians, dec_moon.radians
             ra_sun_rad, dec_sun_rad = ra_sun.radians, dec_sun.radians
@@ -500,19 +452,7 @@ class MoonService:
             x = np.sin(dec_sun_rad) * np.cos(dec_moon_rad) - \
                 np.cos(dec_sun_rad) * np.sin(dec_moon_rad) * np.cos(delta_ra)
 
-            position_angle_rad = np.arctan2(y, x)
-            pa_sun_deg = np.degrees(position_angle_rad)
-
-            # +90°: the angle is measured from "up", while the drawn lit side faces +X
-            bright_limb_angle_deg = pa_sun_deg + 90.0
-
-            # Normalize to (-180, 180] range
-            if bright_limb_angle_deg > 180:
-                bright_limb_angle_deg -= 360.0
-            elif bright_limb_angle_deg <= -180:
-                bright_limb_angle_deg += 360.0
-
-            return bright_limb_angle_deg
+            return np.degrees(np.arctan2(y, x))
 
         except Exception as e:
             logger.error(f"Error calculating bright limb position angle: {e}", exc_info=True)
@@ -547,16 +487,13 @@ class MoonService:
             numerator = np.sin(hour_angle_rad)
             denominator = np.cos(dec_rad) * np.tan(lat_rad) - np.sin(dec_rad) * np.cos(hour_angle_rad)
 
-            parallactic_angle_rad = np.arctan2(numerator, denominator)
-            parallactic_angle_deg = np.degrees(parallactic_angle_rad)
-
-            return parallactic_angle_deg
+            return np.degrees(np.arctan2(numerator, denominator))
 
         except Exception as e:
             logger.error(f"Error calculating parallactic angle: {e}")
             return 0.0
 
-    def _generate_moon_image(self, illumination_percent: float, rotation_angle: float = 0.0) -> BinaryIO | None:
+    def _generate_moon_image(self, illumination_percent: float, bright_limb_zenith_angle: float = 0.0) -> BinaryIO | None:
         try:
             fig = Figure(figsize=(6, 6))
             FigureCanvasAgg(fig)
@@ -568,7 +505,8 @@ class MoonService:
             ax.axis('off')
 
             # Create a transform for rotation around the center
-            transform = transforms.Affine2D().rotate_deg(rotation_angle) + ax.transData
+            # +90°: the angle is measured from "up", while the drawn lit side faces +X
+            transform = transforms.Affine2D().rotate_deg(bright_limb_zenith_angle + 90.0) + ax.transData
 
             moon_circle = patches.Circle((0, 0), 1, facecolor='#f8f8ff', edgecolor='#2c2c2c', linewidth=1, transform=transform)
             ax.add_patch(moon_circle)
