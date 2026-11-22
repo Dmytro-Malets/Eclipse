@@ -75,7 +75,7 @@ class MoonService:
             distance = self._get_moon_distance(observer, target_datetime)
 
             # Calculate moon's apparent magnitude
-            magnitude = self._calculate_moon_magnitude(target_datetime, moon_phase['phase_angle'])
+            magnitude = self._calculate_moon_magnitude(observer, target_datetime)
 
             # Get moonrise and moonset times
             moonrise_moonset = self._calculate_moonrise_moonset(user, target_date, tz)
@@ -339,17 +339,19 @@ class MoonService:
             logger.error(f"Error calculating moon distance: {e}")
             return {'km': 0, 'miles': 0}
 
-    def _calculate_moon_magnitude(self, target_datetime: datetime, phase_angle_deg: float) -> float:
+    def _calculate_moon_magnitude(self, observer, target_datetime: datetime) -> float:
         try:
-            # Phase angle alpha: 0° = full Moon, 180° = new Moon
-            alpha_deg = phase_angle_deg
+            t = self.ts.from_datetime(target_datetime.astimezone(utc))
 
-            # Calculate geocentric distance
-            target_utc = target_datetime.astimezone(utc)
-            t = self.ts.from_datetime(target_utc)
-
-            moon_obs = self.earth.at(t).observe(self.moon)
+            # Topocentric apparent position of the Moon (as seen by the observer)
+            moon_obs = observer.at(t).observe(self.moon).apparent()
             distance_km = moon_obs.distance().km
+
+            # Topocentric phase angle alpha (Sun-Moon-Observer): 0° = full Moon, 180° = new Moon
+            alpha_deg = abs(float(moon_obs.phase_angle(self.sun).degrees))
+
+            # Sun-Moon distance in AU (the Moon's distance from the light source)
+            sun_moon_au = self.sun.at(t).observe(self.moon).distance().au
 
             # Mean distance Earth-Moon in km
             mean_distance_km = 384400.0
@@ -358,16 +360,20 @@ class MoonService:
             # Factor of 5 comes from magnitude scale: Δm = 5 × log₁₀(d/d₀)
             distance_correction = 5 * np.log10(distance_km / mean_distance_km)
 
-            # Base magnitude for full moon at mean distance
+            # Sun-Moon distance correction: the Moon is dimmer when farther from the Sun
+            # Reference distance is 1 AU, so d₀ = 1 and the term is simply 5 × log₁₀(r)
+            sun_distance_correction = 5 * np.log10(sun_moon_au)
+
+            # Base magnitude for full moon at mean distance (r = 1 AU)
             base_magnitude = -12.74
 
             # Empirical phase correction formula for lunar magnitude
             # Linear term (0.026|α|) accounts for the basic dimming with phase angle
             # Quartic term (4×10^-9 α^4) accounts for the steep dimming at large phase angles
-            phase_correction = 0.026 * abs(alpha_deg) + 4.0e-9 * (alpha_deg ** 4)
+            phase_correction = 0.026 * alpha_deg + 4.0e-9 * (alpha_deg ** 4)
 
             # Final apparent magnitude
-            magnitude = base_magnitude + phase_correction + distance_correction
+            magnitude = base_magnitude + phase_correction + distance_correction + sun_distance_correction
 
             return round(magnitude, 2)
 
